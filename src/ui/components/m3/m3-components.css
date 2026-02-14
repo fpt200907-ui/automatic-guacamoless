@@ -1,0 +1,525 @@
+/**
+ * M3 Component Styles
+ * Styles for all Material Design 3 UI components
+ */
+
+/* ===== Button Styles ===== */
+
+.md-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--md-spacing-2);
+  padding: var(--md-spacing-2) var(--md-spacing-4);
+  border-radius: var(--md-shape-corner-medium);
+  border: none;
+  font-family: var(--md-font-family);
+  font-size: var(--md-font-label-large);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--md-motion-duration-short2) var(--md-motion-easing-standard);
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.md-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  transition: background var(--md-motion-duration-short2) var(--md-motion-easing-standard);
+  pointer-events: none;
+}
+
+.md-button:hover::before {
+  background: var(--md-state-hover);
+}
+
+.md-button:active::before {
+  background: var(--md-state-pressed);
+}
+
+.md-button:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+/* Button Variants */
+
+.md-button--filled {
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  box-shadow: var(--md-elevation-0);
+}
+
+.md-button--filled:hover {
+  box-shadow: var(--md-elevation-1);
+}
+
+.md-button--filled:active {
+  box-shadow: var(--md-elevation-0);
+}
+
+.md-button--outlined {
+  background: transparent;
+  color: var(--md-primary);
+  border: 1px solid var(--md-outline);
+}
+
+.md-button--outlined:hover {
+  background: var(--md-state-hover);
+  border-color: var(--md-primary);
+}
+
+.md-button--text {
+  background: transparent;
+  color: var(--md-primary);
+}
+
+.md-button--text:hover {
+  background: var(--md-state-hover);
+}
+
+/* Button Sizes */
+
+.md-button--small {
+  padding: var(--md-spacing-1) var(--md-spacing-2);
+  font-size: var(--md-font-label-medium);
+}
+
+.md-button--large {
+  padding: var(--md-spacing-3) var(--md-spacing-6);
+  font-size: var(--md-font-label-large);
+}
+
+/* ===== Card Styles ===== */
+
+.md-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--md-surface-container-low);
+  border-radius: var(--md-shape-corner-large);
+  border: 1px solid var(--md-outline-variant);
+  overflow: hidden;
+  transition: all var(--md-motion-duration-short3) var(--md-motion-easing-standard);
+}
+
+.md-card--elevation-1 {
+  box-shadow: var(--md-elevation-1);
+}
+
+.md-card--elevation-2 {
+  box-shadow: var(--md-elevation-2);
+}
+
+.md-card--elevation-3 {
+  box-shadow: var(--md-elevation-3);
+}
+
+.md-card--interactive:hover {
+  background: var(--md-surface-container);
+  box-shadow: var(--md-elevation-2);
+  border-color: var(--md-outline);
+}
+
+/* ===== Input Styles ===== */
+
+.md-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-spacing-2);
+  width: 100%;
+}
+
+.md-input-label {
+  font-size: var(--md-font-label-large);
+  color: var(--md-on-surface-variant);
+  font-weight: 500;
+}
+
+.md-input {
+  padding: var(--md-spacing-3);
+  background: var(--md-surface-container-high);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-corner-medium);
+  color: var(--md-on-surface);
+  font-size: var(--md-font-body-medium);
+  font-family: var(--md-font-family);
+  transition: all var(--md-motion-duration-short2) var(--md-motion-easing-standard);
+}
+
+.md-input:focus {
+  outline: none;
+  background: var(--md-surface-container-highest);
+  border-color: var(--md-primary);
+  box-shadow: var(--md-elevation-1);
+}
+
+.md-input--error {
+  border-color: var(--md-error);
+}
+
+.md-input--error:focus {
+  border-color: var(--md-error);
+  box-shadow: 0 0 0 3px rgba(242, 132, 130, 0.1);
+}
+
+.md-input--disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.md-input-error {
+  font-size: var(--md-font-label-small);
+  color: var(--md-error);
+}
+
+/* ===== Icon Button Styles ===== */
+
+.md-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--md-on-surface);
+  cursor: pointer;
+  transition: all var(--md-motion-duration-short2) var(--md-motion-easing-standard);
+  position: relative;
+  overflow: hidden;
+}
+
+.md-icon-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  transition: background var(--md-motion-duration-short2) var(--md-motion-easing-standard);
+  pointer-events: none;
+}
+
+.md-icon-button:hover::before {
+  background: var(--md-state-hover);
+}
+
+.md-icon-button:active::before {
+  background: var(--md-state-pressed);
+}
+
+.md-icon-button--small {
+  width: 2rem;
+  height: 2rem;
+}
+
+.md-icon-button--large {
+  width: 3rem;
+  height: 3rem;
+}
+
+/* ===== Toggle Button Styles ===== */
+
+.md-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--md-spacing-2);
+  padding: var(--md-spacing-2) var(--md-spacing-4);
+  border-radius: var(--md-shape-corner-medium);
+  border: 1px solid var(--md-outline);
+  background: transparent;
+  color: var(--md-on-surface);
+  font-size: var(--md-font-label-large);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--md-motion-duration-short2) var(--md-motion-easing-standard);
+  position: relative;
+}
+
+.md-toggle-button--selected {
+  background: var(--md-primary-container);
+  color: var(--md-primary);
+  border-color: var(--md-primary);
+}
+
+/* ===== Chip Styles ===== */
+
+.md-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--md-spacing-2);
+  padding: var(--md-spacing-2) var(--md-spacing-3);
+  background: var(--md-surface-container-high);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-corner-full);
+  color: var(--md-on-surface);
+  font-size: var(--md-font-label-medium);
+  transition: all var(--md-motion-duration-short2) var(--md-motion-easing-standard);
+}
+
+.md-chip--disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.md-chip-icon {
+  color: var(--md-on-surface-variant);
+}
+
+.md-chip-label {
+  font-weight: 500;
+}
+
+.md-chip-delete {
+  background: none;
+  border: none;
+  color: var(--md-on-surface-variant);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0;
+  margin-left: var(--md-spacing-1);
+  transition: color var(--md-motion-duration-short2) var(--md-motion-easing-standard);
+}
+
+.md-chip-delete:hover {
+  color: var(--md-on-surface);
+}
+
+/* ===== FAB (Floating Action Button) Styles ===== */
+
+.md-fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--md-spacing-2);
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: var(--md-primary-container);
+  color: var(--md-primary);
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--md-elevation-3);
+  transition: all var(--md-motion-duration-short2) var(--md-motion-easing-standard);
+  position: relative;
+}
+
+.md-fab:hover {
+  box-shadow: var(--md-elevation-4);
+}
+
+.md-fab:active {
+  transform: scale(0.95);
+}
+
+.md-fab--small {
+  width: 3rem;
+  height: 3rem;
+}
+
+.md-fab--large {
+  width: 4rem;
+  height: 4rem;
+}
+
+.md-fab--extended {
+  border-radius: var(--md-shape-corner-large);
+  width: auto;
+  padding: 0 var(--md-spacing-4);
+}
+
+/* ===== Switch Styles ===== */
+
+.md-switch-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-2);
+}
+
+.md-switch {
+  appearance: none;
+  width: 3.25rem;
+  height: 2rem;
+  border-radius: var(--md-shape-corner-full);
+  background: var(--md-surface-container-high);
+  border: 2px solid var(--md-outline);
+  cursor: pointer;
+  position: relative;
+  transition: all var(--md-motion-duration-short2) var(--md-motion-easing-standard);
+}
+
+.md-switch::after {
+  content: '';
+  position: absolute;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: var(--md-on-surface);
+  top: 50%;
+  left: 4px;
+  transform: translateY(-50%);
+  transition: all var(--md-motion-duration-short2) var(--md-motion-easing-standard);
+  box-shadow: var(--md-elevation-1);
+}
+
+.md-switch--checked {
+  background: var(--md-primary);
+  border-color: var(--md-primary);
+}
+
+.md-switch--checked::after {
+  background: var(--md-on-primary);
+  left: calc(100% - 1.25rem - 4px);
+}
+
+.md-switch--disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.md-switch-label {
+  font-size: var(--md-font-body-medium);
+  color: var(--md-on-surface);
+}
+
+/* ===== Text Field Styles ===== */
+
+.md-text-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-spacing-2);
+  width: 100%;
+}
+
+.md-text-field-label {
+  font-size: var(--md-font-label-large);
+  color: var(--md-on-surface-variant);
+  font-weight: 500;
+  transition: color var(--md-motion-duration-short2) var(--md-motion-easing-standard);
+}
+
+.md-text-field-input {
+  padding: var(--md-spacing-3);
+  background: var(--md-surface-container-high);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-corner-medium);
+  color: var(--md-on-surface);
+  font-size: var(--md-font-body-medium);
+  font-family: var(--md-font-family);
+  resize: none;
+  transition: all var(--md-motion-duration-short2) var(--md-motion-easing-standard);
+}
+
+.md-text-field-input:focus {
+  outline: none;
+  background: var(--md-surface-container-highest);
+  border-color: var(--md-primary);
+  box-shadow: var(--md-elevation-1);
+}
+
+.md-text-field-input--error {
+  border-color: var(--md-error);
+}
+
+.md-text-field-input--error:focus {
+  box-shadow: 0 0 0 3px rgba(242, 132, 130, 0.1);
+}
+
+.md-text-field-input--disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.md-text-field-helper {
+  font-size: var(--md-font-label-small);
+  color: var(--md-on-surface-variant);
+}
+
+.md-text-field-helper--error {
+  color: var(--md-error);
+}
+
+/* ===== Divider Styles ===== */
+
+.md-divider {
+  height: 1px;
+  background: var(--md-outline-variant);
+  width: 100%;
+}
+
+/* ===== Tooltip Styles ===== */
+
+.md-tooltip-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.md-tooltip {
+  position: absolute;
+  background: var(--md-on-surface);
+  color: var(--md-surface);
+  padding: var(--md-spacing-2) var(--md-spacing-3);
+  border-radius: var(--md-shape-corner-small);
+  font-size: var(--md-font-label-medium);
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--md-motion-duration-short3) var(--md-motion-easing-standard);
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: var(--md-elevation-4);
+}
+
+.md-tooltip-wrapper:hover .md-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.md-tooltip-wrapper--top .md-tooltip {
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-var(--md-spacing-2));
+  margin-bottom: var(--md-spacing-2);
+}
+
+.md-tooltip-wrapper--bottom .md-tooltip {
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(var(--md-spacing-2));
+  margin-top: var(--md-spacing-2);
+}
+
+/* ===== Badge Styles ===== */
+
+.md-badge-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.md-badge {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  background: var(--md-error);
+  color: white;
+  border-radius: 50%;
+  font-size: var(--md-font-label-small);
+  font-weight: 600;
+}
+
+.md-badge-wrapper--top-right .md-badge {
+  top: -8px;
+  right: -8px;
+}
+
+.md-badge-wrapper--top-left .md-badge {
+  top: -8px;
+  left: -8px;
+}
