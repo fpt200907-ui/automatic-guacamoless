@@ -337,7 +337,6 @@ export default function () {
   let extrasInitialized = false;
   let healthEl = null;
   let adrEl = null;
-  let killsEl = null;
   let healthInterval = null;
   let lastKills = 0;
   let killSound = null;
@@ -499,10 +498,6 @@ export default function () {
           adrEl.style.cssText = 'display:block;position:fixed;z-index: 2;margin:6px 0 0 0;left: 15px;mix-blend-mode: difference;font-weight: bold;font-size: large;';
           healthContainer.appendChild(adrEl);
 
-          killsEl = outerDocument.createElement('span');
-          killsEl.style.cssText = 'display:block;position:fixed;z-index:2;left:0px;top:-20px;color:white;background-color:rgba(0, 0, 0, 0.2);padding:5px 10px;border-radius:5px;font-family:Arial, sans-serif;font-size:18px;pointer-events:none;';
-          healthContainer.appendChild(killsEl);
-
           healthInterval = setInterval(() => {
             try {
               const hpPercent = outerDocument.getElementById('ui-health-actual').style.width.slice(0, -1);
@@ -519,9 +514,8 @@ export default function () {
               const adrTotal = 25 * boost0Width + 25 * boost1Width + 37.5 * boost2Width + 12.5 * boost3Width;
               adrEl.innerHTML = Math.round(adrTotal);
               
+              // Detect kill count increase and trigger sound (no visual display)
               const currentKills = getKills();
-              killsEl.innerHTML = 'kills: ' + currentKills;
-              
               if (currentKills > lastKills) {
                 lastKills = currentKills;
                 playKillSound();
@@ -579,7 +573,6 @@ export default function () {
     try {
       if (healthEl && healthEl.parentNode) healthEl.remove();
       if (adrEl && adrEl.parentNode) adrEl.remove();
-      if (killsEl && killsEl.parentNode) killsEl.remove();
       if (healthInterval) clearInterval(healthInterval);
       lastKills = 0;
       killSound = null;

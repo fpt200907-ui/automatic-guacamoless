@@ -1,6 +1,6 @@
 import { gameManager, settings, inputState } from '@/core/state.js';
 import { translations } from '@/core/obfuscatedNameTranslator.js';
-import { isGameReady, inputCommands, findTeam } from '@/utils/constants.js';
+import { isGameReady, inputCommands, findTeam, isWeaponReloading } from '@/utils/constants.js';
 import { autoFireEnabled } from '@/features/AutoFire.js';
 
 let initialized = false;
@@ -119,26 +119,9 @@ function isHealing(player) {
 }
 
 function isReloading(player) {
-  const netData = player[translations.netData_];
-  if (!netData) return false;
-  
-  // Check if weapon is reloading
-  // Common reload-related properties to check
-  for (const key in netData) {
-    const val = netData[key];
-    if (typeof val === 'number' && key.toLowerCase().includes('reload')) {
-      return val > 0;
-    }
-  }
-  
-  // Alternative: check active weapon for reload indicator
-  const activeWeapon = netData?.[translations.activeWeapon_];
-  if (activeWeapon && typeof activeWeapon === 'string') {
-    const w = activeWeapon.toLowerCase();
-    return w.includes('reload');
-  }
-  
-  return false;
+  // Use the proper reload detection from constants
+  // which checks netData action type (1 = Reload, 2 = ReloadAlt)
+  return isWeaponReloading(player);
 }
 
 function isFighting(game) {

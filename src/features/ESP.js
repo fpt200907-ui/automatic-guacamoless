@@ -22,18 +22,18 @@ const calculateGunPosition = (playerPos, direction, weapon) => {
 };
 
 const COLORS = {
-  GREEN_: 0x399d37,
-  BLUE_: 0x3a88f4,
-  RED_: 0xdc3734,
-  WHITE_: 0xffffff,
+  GREEN_: 0x7dd5e6,      // M3 Secondary (Cyan) - Team/Allies
+  BLUE_: 0x7dd5e6,       // M3 Secondary (Cyan) - Same team
+  RED_: 0xf28482,        // M3 Error - Enemies
+  WHITE_: 0xcbddf5,      // M3 On Primary - Neutral/Outline
 };
 
 const GRENADE_COLORS = {
-  DEFAULT_: 0xff9900,
-  SMOKE_: 0xaaaaaa,
-  FRAG_: 0xff5500,
-  MIRV_: 0xff0000,
-  MARTYR_: 0xee3333,
+  DEFAULT_: 0xffc66d,    // M3 Tertiary (Orange)
+  SMOKE_: 0xb3b3b3,      // M3 On Surface Variant lighter
+  FRAG_: 0xf28482,       // M3 Error
+  MIRV_: 0xf28482,       // M3 Error
+  MARTYR_: 0xf28482,     // M3 Error
 };
 
 const graphicsCache = {};
@@ -74,8 +74,9 @@ function nameTag(player) {
     set: () => { },
   });
 
-  player.nameText.tint = !enabled ? 0xffffff : (isSameTeam ? 0xcbddf5 : 0x505050);
-  player.nameText.style.fill = !enabled ? '#00ffff' : (isSameTeam ? '#39d4f3' : '#505050');
+  // M3-themed nametag colors
+  player.nameText.tint = !enabled ? 0xffffff : (isSameTeam ? 0x7dd5e6 : 0x6c757d);
+  player.nameText.style.fill = !enabled ? '#7dd5e6' : (isSameTeam ? '#7dd5e6' : '#9ca3af');
   player.nameText.style.fontSize = 20;
   player.nameText.style.dropShadowBlur = 0.1;
 }
@@ -122,7 +123,7 @@ const drawFlashlight = (
   bullet,
   weapon,
   graphics,
-  color = 0x0000ff,
+  color = 0xffb800,  // M3 Primary (Yellow) for local player gun
   opacity = 0.1
 ) => {
   if (!bullet || !weapon) return;
@@ -176,14 +177,14 @@ const drawFlashlight = (
   let finalColor = color;
   let finalOpacity = opacity;
   if (!isLocalPlayer) {
-    finalColor = 0x505050; // Dark gray for enemy flashlight
+    finalColor = 0x6c757d; // M3 On Surface Variant (muted) - for enemy flashlight
     finalOpacity = opacity * 1.8; // Bolder/more vibrant
   } else {
     finalOpacity = opacity * 2; // Bold for local player
   }
 
   if (isLocalPlayer) {
-    const underlayColor = 0xaaaaaa;
+    const underlayColor = 0x9ca3af;  // M3 On Surface Variant lighter - weapon spread indicator
     graphics.beginFill(underlayColor, opacity * 1.5);
     graphics.moveTo(center.x, center.y);
     graphics.arc(
@@ -632,7 +633,7 @@ function renderBulletTrajectory(localPlayer, graphics) {
   );
 
   const hitPlayer = segments.some((segment) => segment.hitPlayer);
-  const trajectoryColor = hitPlayer ? COLORS.RED_ : 0xff00ff;
+  const trajectoryColor = hitPlayer ? COLORS.RED_ : 0x7dd5e6;  // M3 Secondary if no hit
   const trajectoryWidth = hitPlayer ? 2 : 1;
 
   graphics.lineStyle(trajectoryWidth, trajectoryColor, 0.5);

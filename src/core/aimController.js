@@ -429,15 +429,28 @@ const updateAimbotDot = (displayPos, isDotTargetShootable, isFocusedEnemy) => {
       overlayState.aimbotDot_.style.top = `${y}px`;
     }
 
+    // M3-themed visual states for aimbot dot
     if (!isDotTargetShootable) {
-      overlayState.aimbotDot_.style.borderColor = 'gray';
-      overlayState.aimbotDot_.style.boxShadow = '0 0 8px rgba(128, 128, 128, 0.5)';
+      // Not shootable: muted outline color (target blocked)
+      overlayState.aimbotDot_.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+      overlayState.aimbotDot_.style.boxShadow = 
+        '0 0 12px rgba(255, 255, 255, 0.15),' +
+        '0 0 24px rgba(255, 255, 255, 0.08),' +
+        'inset 0 0 12px rgba(255, 255, 255, 0.05)';
     } else if (isFocusedEnemy) {
-      overlayState.aimbotDot_.style.borderColor = 'rgb(190, 12, 185)';
-      overlayState.aimbotDot_.style.boxShadow = '0 0 8px rgba(190, 12, 185, 0.5)';
+      // Focused: primary yellow (target locked)
+      overlayState.aimbotDot_.style.borderColor = '#ffb800';
+      overlayState.aimbotDot_.style.boxShadow = 
+        '0 0 16px rgba(255, 184, 0, 0.8),' +
+        '0 0 32px rgba(255, 184, 0, 0.4),' +
+        'inset 0 0 16px rgba(255, 184, 0, 0.3)';
     } else {
-      overlayState.aimbotDot_.style.borderColor = 'red';
-      overlayState.aimbotDot_.style.boxShadow = '0 0 8px rgba(255, 0, 0, 0.5)';
+      // Shootable: error red (target in range)
+      overlayState.aimbotDot_.style.borderColor = '#f28482';
+      overlayState.aimbotDot_.style.boxShadow = 
+        '0 0 16px rgba(242, 132, 130, 0.8),' +
+        '0 0 32px rgba(242, 132, 130, 0.4),' +
+        'inset 0 0 16px rgba(242, 132, 130, 0.2)';
     }
 
     overlayState.aimbotDot_.style.display = 'block';

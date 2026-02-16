@@ -16,6 +16,7 @@ import { outerDocument, outer } from '@/core/outer.js';
 import { v2, collisionHelpers, sameLayer } from '@/utils/math.js';
 import { setAutoAttackFire } from '@/features/AutoFire.js';
 import { updatePanHero } from '@/features/PanHero.js';
+import { getWeaponClass, getAimbotParams } from '@/utils/weaponClassifier.js';
 
 export let autoAttackEnabled = false;
 
@@ -37,17 +38,17 @@ const state = {
   lastUpdateTime: Date.now(),
 };
 
-const AIM_SMOOTH_DISTANCE_PX = 4; // Tighter smoothing for precision
-const AIM_SMOOTH_ANGLE = Math.PI / 100; // More aggressive angle smoothing
+const AIM_SMOOTH_DISTANCE_PX = 3; // Tighter smoothing for better precision (improved from 4)
+const AIM_SMOOTH_ANGLE = Math.PI / 110; // More aggressive angle smoothing (improved from 100)
 const MELEE_ENGAGE_DISTANCE = 5.5;
 const MELEE_LOCK_GRACE_PERIOD = 1000;
 const MELEE_PREDICTION_ENABLED = true;
 const MAX_VELOCITY_DELTA = 200; // Detect jumps (teleports)
-const VELOCITY_SMOOTHING = 0.78; // Increased Kalman gain for faster response
-const VELOCITY_SMOOTHING_ACCEL = 0.85; // Higher gain for acceleration detection
-const ACCELERATION_INFLUENCE = 0.15; // Increased from 0.05 for better trajectory
-const HISTORY_SIZE = 15; // Increased from 8 for better trend fitting
-const FPS_BUFFER_SIZE = 12;
+const VELOCITY_SMOOTHING = 0.80; // Increased from 0.78 for faster response (improved)
+const VELOCITY_SMOOTHING_ACCEL = 0.88; // Increased from 0.85 for better acceleration tracking (improved)
+const ACCELERATION_INFLUENCE = 0.12; // Reduced from 0.15 to prevent overshoot (improved)
+const HISTORY_SIZE = 18; // Increased from 15 for better trend fitting (improved)
+const FPS_BUFFER_SIZE = 16; // Increased from 12 for more stable FPS averaging (improved)
 
 const computeAimAngle = (point) => {
   if (!point) return 0;
@@ -58,19 +59,53 @@ const computeAimAngle = (point) => {
 
 const normalizeAngle = (angle) => Math.atan2(Math.sin(angle), Math.cos(angle));
 
-const shouldSmoothAim = (currentPos, nextPos) => {
+/**
+ * Get weapon-specific aimbot parameters
+ * Adapts sensitivity, smoothing, and prediction based on weapon type
+ */
+const getWeaponSpecificParams = (player) => {
+  if (!player) return null;
+  
+  try {
+    const weapon = findWeapon(player);
+    if (!weapon) return null;
+    
+    const weaponName = weapon.name || '';
+    const weaponId = weaponName.toLowerCase().replace(/\s/g, '_');
+    
+    return getAimbotParams(weaponId);
+  } catch {
+    return null;
+  }
+};
+
+const shouldSmoothAim = (currentPos, nextPos, player = null) => {
   if (!nextPos) return false;
   if (!currentPos) return true;
 
   const distance = Math.hypot(nextPos.x - currentPos.x, nextPos.y - currentPos.y);
   
-  // More aggressive smoothing thresholds for better tracking
-  if (distance > AIM_SMOOTH_DISTANCE_PX) return true;
+  // Get weapon-specific smoothing threshold
+  let smoothDistance = AIM_SMOOTH_DISTANCE_PX;
+  const weaponParams = getWeaponSpecificParams(player);
+  if (weaponParams) {
+    // Adjust threshold based on weapon sensitivity
+    // Sniper rifles need tighter smoothing, shotguns need looser
+    smoothDistance = AIM_SMOOTH_DISTANCE_PX * (1 / weaponParams.sensitivity);
+  }
+  
+  if (distance > smoothDistance) return true;
 
   const angleDiff = Math.abs(
     normalizeAngle(computeAimAngle(nextPos) - computeAimAngle(currentPos))
   );
-  return angleDiff > AIM_SMOOTH_ANGLE;
+  
+  // More aggressive angle smoothing for precision weapons
+  const angleThreshold = weaponParams?.sensitivity < 0.7 
+    ? AIM_SMOOTH_ANGLE * 1.5  // Sniper: stricter angle threshold
+    : AIM_SMOOTH_ANGLE;
+  
+  return angleDiff > angleThreshold;
 };
 
 const getLocalLayer = (player) => {
@@ -139,6 +174,41 @@ const BLOCKING_OBSTACLE_PATTERNS = [
   'stone_0',
   'crate_',
 ];
+
+/**
+ * Detect outliers in velocity measurements using Median Absolute Deviation (MAD)
+ * More robust than standard deviation for non-normal distributions
+ */
+function detectVelocityOutliers(velocities, threshold = 2.5) {
+  if (velocities.length < 3) return new Set();
+  
+  const median = velocities.sort((a, b) => a - b)[Math.floor(velocities.length / 2)];
+  const deviations = velocities.map(v => Math.abs(v - median)).sort((a, b) => a - b);
+  const mad = deviations[Math.floor(deviations.length / 2)] || 0;
+  
+  const outliers = new Set();
+  for (let i = 0; i < velocities.length; i++) {
+    if (mad > 0 && Math.abs(velocities[i] - median) > threshold * mad) {
+      outliers.add(i);
+    }
+  }
+  return outliers;
+}
+
+/**
+ * Estimate ping-based prediction adjustment
+ * Compensates for network latency by slightly extending prediction time
+ */
+function getNetworkLatencyFactor() {
+  // Get estimated ping from game state
+  const ping = getPing?.() || 50; // Default 50ms if unavailable
+  
+  // Convert ping to prediction time adjustment (milliseconds -> seconds)
+  // Each 50ms of ping = ~0.02s additional prediction needed
+  const latencyAdjustment = Math.min(0.15, ping / 1000 * 0.3);
+  
+  return 1 + latencyAdjustment;
+}
 
 const NON_BLOCKING_OBSTACLE_PATTERNS = [
   'bush_',
@@ -221,14 +291,25 @@ const canCastToPlayer = (localPlayer, targetPlayer, weapon, bullet) => {
   const dir = v2.create_(Math.cos(aimAngle), Math.sin(aimAngle));
   const maxDistance = Math.hypot(dx, dy);
 
-  // Adaptive raycount based on distance for better accuracy and performance
+  // Adaptive raycount based on distance AND weapon spread for better accuracy
   let rayCount = 3;
+  const spread = (weapon?.shotSpread || 0) * (Math.PI / 180);
+  
   if (maxDistance < 30) {
-    rayCount = 5; // Close targets: more rays for precision
-  } else if (maxDistance < 80) {
-    rayCount = 4; // Medium distance: balanced
-  } else if (maxDistance > 150) {
+    rayCount = 6; // Close targets: more rays for precision (increased from 5)
+  } else if (maxDistance < 60) {
+    rayCount = 5;
+  } else if (maxDistance < 100) {
+    rayCount = 4;
+  } else if (maxDistance < 150) {
+    rayCount = 3;
+  } else {
     rayCount = 2; // Far targets: fewer rays for speed
+  }
+  
+  // Increase raycount for weapons with high spread (shotguns)
+  if (spread > 0.2) {
+    rayCount = Math.min(8, rayCount + 2);
   }
   
   const allObstacles = Object.values(idToObj).filter((obj) => {
@@ -329,9 +410,11 @@ function getEnemyBodyCenter(enemy) {
       }
       // Rectangular collider - lấy center
       if (enemy.collider.min && enemy.collider.max) {
+        const centerX = (enemy.collider.min.x + enemy.collider.max.x) / 2;
+        const centerY = (enemy.collider.min.y + enemy.collider.max.y) / 2;
         return {
-          x: (enemy.collider.min.x + enemy.collider.max.x) / 2 + visualPos.x,
-          y: (enemy.collider.min.y + enemy.collider.max.y) / 2 + visualPos.y,
+          x: centerX + visualPos.x,
+          y: centerY + visualPos.y,
         };
       }
       // AABB collider
@@ -441,10 +524,13 @@ function predictPosition(enemy, currentPlayer) {
   let totalWeight = 0;
   let validFrames = 0;
   
-  // Exponential weighting favors recent frames more smoothly
+  // First pass: collect velocities for outlier detection
+  const vxSamples = [];
+  const vySamples = [];
+  
   for (let i = 1; i < history.length; i++) {
     const dt = (history[i].t - history[i-1].t) / 1000; // Convert to seconds
-    if (dt > 0.0001 && dt < 0.1) { // Ignore huge dt (lost focus)
+    if (dt > 0.0001 && dt < 0.1) {
       const dx = history[i].x - history[i-1].x;
       const dy = history[i].y - history[i-1].y;
       const frameDist = Math.hypot(dx, dy);
@@ -454,14 +540,46 @@ function predictPosition(enemy, currentPlayer) {
         continue; // Skip this frame
       }
       
+      vxSamples.push(dx / dt);
+      vySamples.push(dy / dt);
+    }
+  }
+  
+  // Detect outliers using Median Absolute Deviation
+  const vxOutliers = detectVelocityOutliers(vxSamples, 3.0);
+  const vyOutliers = detectVelocityOutliers(vySamples, 3.0);
+  
+  // Second pass: weighted average excluding outliers
+  let sampleIdx = 0;
+  for (let i = 1; i < history.length; i++) {
+    const dt = (history[i].t - history[i-1].t) / 1000;
+    if (dt > 0.0001 && dt < 0.1) {
+      const dx = history[i].x - history[i-1].x;
+      const dy = history[i].y - history[i-1].y;
+      const frameDist = Math.hypot(dx, dy);
+      
+      if (frameDist > MAX_VELOCITY_DELTA) {
+        continue;
+      }
+      
+      // Skip outlier samples
+      if (vxOutliers.has(sampleIdx) || vyOutliers.has(sampleIdx)) {
+        sampleIdx++;
+        continue;
+      }
+      
+      const vx = dx / dt;
+      const vy = dy / dt;
+      
       // Exponential weighting: most recent frame has highest weight (2.5x curve)
       const normalizedIdx = i / history.length; // 0 to 1
       const weight = Math.exp(normalizedIdx * 2.5) - 1; // Exponential for better recency
       
-      rawVx += (dx / dt) * weight;
-      rawVy += (dy / dt) * weight;
+      rawVx += vx * weight;
+      rawVy += vy * weight;
       totalWeight += weight;
       validFrames++;
+      sampleIdx++;
     }
   }
   
@@ -475,7 +593,19 @@ function predictPosition(enemy, currentPlayer) {
   
   // Use higher damping when velocity changes suddenly (acceleration detected)
   const velocityChange = Math.hypot(rawVx - prevSmoothed.vx, rawVy - prevSmoothed.vy);
-  const adaptiveGain = velocityChange > 50 ? VELOCITY_SMOOTHING_ACCEL : VELOCITY_SMOOTHING;
+  
+  // More sophisticated adaptive gain: account for velocity magnitude too
+  let adaptiveGain = VELOCITY_SMOOTHING;
+  if (velocityChange > 100) {
+    // Large change: strong acceleration, trust new data more
+    adaptiveGain = VELOCITY_SMOOTHING_ACCEL;
+  } else if (velocityChange > 50) {
+    // Medium change: blend between normal and acceleration mode
+    adaptiveGain = VELOCITY_SMOOTHING + (VELOCITY_SMOOTHING_ACCEL - VELOCITY_SMOOTHING) * 0.6;
+  } else if (velocityChange < 10) {
+    // Small change: low confidence in movement, trust history more
+    adaptiveGain = VELOCITY_SMOOTHING * 0.7;
+  }
   
   let smoothVx = prevSmoothed.vx + adaptiveGain * (rawVx - prevSmoothed.vx);
   let smoothVy = prevSmoothed.vy + adaptiveGain * (rawVy - prevSmoothed.vy);
@@ -484,10 +614,10 @@ function predictPosition(enemy, currentPlayer) {
   state.velocitySmoothed_[enemyId] = { vx: smoothVx, vy: smoothVy };
   
   // Step 3: Apply velocity decay if no recent movement (inertia dampening)
-  if (validFrames === 0 || rawVx === 0 && rawVy === 0) {
+  if (validFrames === 0 || (Math.abs(rawVx) < 1 && Math.abs(rawVy) < 1)) {
     // Enemy stopped or data unreliable - gradually reduce velocity
-    smoothVx *= 0.95;
-    smoothVy *= 0.95;
+    smoothVx *= 0.92;
+    smoothVy *= 0.92;
   }
 
   // Step 4: Detect acceleration and apply stronger correction for rapid direction changes
@@ -501,8 +631,11 @@ function predictPosition(enemy, currentPlayer) {
   state.accelerationBuffer_[enemyId] = { ax: accelX, ay: accelY };
   
   // Apply increased acceleration correction for better tracking of sudden movements
-  smoothVx += accelX * ACCELERATION_INFLUENCE;
-  smoothVy += accelY * ACCELERATION_INFLUENCE;
+  // Cap acceleration influence to prevent overshoot
+  const accelMagnitude = Math.hypot(accelX, accelY);
+  const accelInfluenceScale = Math.min(1, accelMagnitude / 300);
+  smoothVx += accelX * ACCELERATION_INFLUENCE * accelInfluenceScale;
+  smoothVy += accelY * ACCELERATION_INFLUENCE * accelInfluenceScale;
 
   const weapon = findWeapon(currentPlayer);
   const bullet = findBullet(weapon);
@@ -512,12 +645,21 @@ function predictPosition(enemy, currentPlayer) {
   const lastFrameTime = history.length > 1 ? (history[history.length-1].t - history[history.length-2].t) : 16;
   const currentFPS = lastFrameTime > 0 ? 1000 / lastFrameTime : 60;
   
-  // Keep running average of FPS for stability
+  // Keep running average of FPS for stability (use exponential weighting for recent FPS)
   state.fpsBuffer_.push(currentFPS);
   if (state.fpsBuffer_.length > FPS_BUFFER_SIZE) state.fpsBuffer_.shift();
   
-  const avgFPS = state.fpsBuffer_.reduce((a, b) => a + b, 0) / state.fpsBuffer_.length;
-  const fpsScale = Math.max(0.6, Math.min(2.5, 60 / avgFPS)); // Clamp between 0.6x and 2.5x (improved from 0.5-3)
+  // Weighted FPS average (favor more recent measurements)
+  let avgFPS = 0;
+  let fpsWeight = 0;
+  for (let i = 0; i < state.fpsBuffer_.length; i++) {
+    const weight = 1 + i * 0.1; // More recent = heavier weight
+    avgFPS += state.fpsBuffer_[i] * weight;
+    fpsWeight += weight;
+  }
+  avgFPS = avgFPS / fpsWeight;
+  
+  const fpsScale = Math.max(0.5, Math.min(3, 60 / avgFPS)); // Clamp between 0.5x and 3x
   
   bulletSpeed = bulletSpeed * fpsScale;
 
@@ -535,8 +677,8 @@ function predictPosition(enemy, currentPlayer) {
   // Quadratic: (vx*t - dx)² + (vy*t - dy)² = (bulletSpeed*t)²
   
   // Include small amount of acceleration in intercept calculation
-  const predictedVx = smoothVx + accelX * 0.08;
-  const predictedVy = smoothVy + accelY * 0.08;
+  const predictedVx = smoothVx + accelX * 0.05; // Reduced from 0.08 for stability
+  const predictedVy = smoothVy + accelY * 0.05;
   
   const a = predictedVx * predictedVx + predictedVy * predictedVy - bulletSpeed * bulletSpeed;
   const b = 2 * (dx * predictedVx + dy * predictedVy);
@@ -553,10 +695,17 @@ function predictPosition(enemy, currentPlayer) {
       const t2 = (-b + sqrtD) / (2 * a);
       
       // Choose the smallest positive time (most accurate intercept)
-      const validTimes = [t1, t2].filter(ti => ti > 0.001);
-      if (validTimes.length > 0) {
-        t = Math.min(...validTimes);
+      // Prefer t1 (earlier intercept) if both are valid
+      if (t1 > 0.0001 && t1 <= 1) {
+        t = t1;
+      } else if (t2 > 0.0001 && t2 <= 1) {
+        t = t2;
+      } else if (t1 > 0.0001) {
+        t = t1;
+      } else if (t2 > 0.0001) {
+        t = t2;
       } else {
+        // Both times are negative or too small, aim at current position
         return gameManager.game[translations.camera_][translations.pointToScreen_]({ x: enemyPos.x, y: enemyPos.y });
       }
     } else {
@@ -572,11 +721,27 @@ function predictPosition(enemy, currentPlayer) {
       }
     }
   }
+  
+  // Clamp intercept time to reasonable range (0.01s to 2s)
+  t = Math.max(0.01, Math.min(2, t));
+  
+  // Apply network latency compensation
+  const latencyFactor = getNetworkLatencyFactor();
+  t = t * latencyFactor;
 
   // Step 7: Calculate predicted position with smoothed velocity and acceleration influence
+  // Apply a damping factor based on intercept time to simulate drag
+  const timeDampening = Math.exp(-t * 0.2); // Exponential damping over time
+  
+  const dampedVx = smoothVx * timeDampening;
+  const dampedVy = smoothVy * timeDampening;
+  
+  // Use lower acceleration influence for longer intercept times
+  const accelInfluence = ACCELERATION_INFLUENCE * Math.max(0.1, timeDampening);
+  
   const predictedPos = {
-    x: enemyPos.x + smoothVx * t + accelX * t * t * 0.5 * ACCELERATION_INFLUENCE,
-    y: enemyPos.y + smoothVy * t + accelY * t * t * 0.5 * ACCELERATION_INFLUENCE,
+    x: enemyPos.x + dampedVx * t + accelX * t * t * 0.5 * accelInfluence,
+    y: enemyPos.y + dampedVy * t + accelY * t * t * 0.5 * accelInfluence,
   };
 
   // Convert to screen coordinates
@@ -590,8 +755,11 @@ function findTarget(players, me) {
   const isLocalOnBypassLayer = isBypassLayer(me.layer);
   const localLayer = getLocalLayer(me);
 
-  // Sort enemies by distance to mouse (surviv-cheat style)
+  // Sort enemies by multiple criteria (distance to mouse is primary)
   let validEnemies = [];
+  
+  const myPos = me[translations.visualPos_];
+  const mousePos = gameManager.game[translations.input_].mousePos;
   
   for (const player of players) {
     if (!player.active) continue;
@@ -601,30 +769,41 @@ function findTarget(players, me) {
     if (!meetsLayerCriteria(player.layer, localLayer, isLocalOnBypassLayer)) continue;
     if (findTeam(player) === meTeam) continue;
     
-    validEnemies.push(player);
+    const playerPos = player[translations.visualPos_];
+    const distanceToMe = Math.hypot(myPos.x - playerPos.x, myPos.y - playerPos.y);
+    
+    // Prefer closer targets (tactical advantage)
+    // Skip very far targets (> 300 units)
+    if (distanceToMe > 300) continue;
+    
+    validEnemies.push({
+      player,
+      screenPos: gameManager.game[translations.camera_][translations.pointToScreen_]({
+        x: playerPos.x,
+        y: playerPos.y,
+      }),
+      distanceToMe,
+    });
   }
 
-  // Sort by distance to mouse position
   if (validEnemies.length === 0) return null;
 
-  const mousePos = gameManager.game[translations.input_].mousePos;
+  // Sort by multiple criteria:
+  // 1. Distance to mouse (primary - user intention)
+  // 2. Distance to me (closer = higher threat)
+  // 3. Screen visibility (prefer on-screen targets)
   validEnemies.sort((a, b) => {
-    const screenPosA = gameManager.game[translations.camera_][translations.pointToScreen_]({
-      x: a[translations.visualPos_].x,
-      y: a[translations.visualPos_].y,
-    });
-    const screenPosB = gameManager.game[translations.camera_][translations.pointToScreen_]({
-      x: b[translations.visualPos_].x,
-      y: b[translations.visualPos_].y,
-    });
+    const distA = Math.hypot(a.screenPos.x - mousePos._x, a.screenPos.y - mousePos._y);
+    const distB = Math.hypot(b.screenPos.x - mousePos._x, b.screenPos.y - mousePos._y);
     
-    const distA = getDistance(screenPosA.x, screenPosA.y, mousePos._x, mousePos._y);
-    const distB = getDistance(screenPosB.x, screenPosB.y, mousePos._x, mousePos._y);
+    // Weight: 70% mouse distance, 30% actual distance
+    const scoreA = distA * 0.7 + (a.distanceToMe / 300) * 100 * 0.3;
+    const scoreB = distB * 0.7 + (b.distanceToMe / 300) * 100 * 0.3;
     
-    return distA - distB;
+    return scoreA - scoreB;
   });
 
-  return validEnemies[0];
+  return validEnemies[0].player;
 }
 
 function findClosestTarget(players, me) {
@@ -633,6 +812,8 @@ function findClosestTarget(players, me) {
   const localLayer = getLocalLayer(me);
   let enemy = null;
   let minDistance = Infinity;
+  
+  const myPos = me[translations.visualPos_];
 
   for (const player of players) {
     if (!player.active) continue;
@@ -642,9 +823,11 @@ function findClosestTarget(players, me) {
     if (!meetsLayerCriteria(player.layer, localLayer, isLocalOnBypassLayer)) continue;
     if (findTeam(player) === meTeam) continue;
 
-    const mePos = me[translations.visualPos_];
     const playerPos = player[translations.visualPos_];
-    const distance = getDistance(mePos.x, mePos.y, playerPos.x, playerPos.y);
+    const distance = Math.hypot(myPos.x - playerPos.x, myPos.y - playerPos.y);
+    
+    // Skip very far targets
+    if (distance > 300) continue;
 
     if (distance < minDistance) {
       minDistance = distance;
@@ -1019,6 +1202,19 @@ function aimbotTicker() {
         // Check if target is within bullet range
         const bulletRange = bullet?.distance || Infinity;
         const isWithinRange = distanceToEnemy <= bulletRange;
+        
+        // === RELOAD STATE CHECK ===
+        // Skip targeting/aiming while reloading - avoid interrupt conflicts
+        const isReloading = isWeaponReloading(me);
+        if (isReloading) {
+          // Let reload complete - don't aim or fire
+          setAimState(new AimState('idle'));
+          aimOverlays.hideAll();
+          state.currentEnemy_ = null;
+          state.focusedEnemy_ = null;
+          return;
+        }
+        
         if (settings.aimbot_.autoAttack_) {
           console.log(`[AutoAttack] distance=${distanceToEnemy.toFixed(1)}, range=${bulletRange}, shootable=${isTargetShootable}, within=${isWithinRange}`);
         }
