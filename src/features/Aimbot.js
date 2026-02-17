@@ -17,6 +17,12 @@ import { v2, collisionHelpers, sameLayer } from '@/utils/math.js';
 import { setAutoAttackFire } from '@/features/AutoFire.js';
 import { updatePanHero } from '@/features/PanHero.js';
 import { getWeaponClass, getAimbotParams } from '@/utils/weaponClassifier.js';
+import {
+  classicPredictPosition,
+  classicFindTarget,
+  classicFindClosestTarget,
+  classicShouldSmoothAim,
+} from '@/features/AimbotClassic.js';
 
 export let autoAttackEnabled = false;
 
@@ -907,8 +913,10 @@ function aimbotTicker() {
           !meleeEnemy.active ||
           meleeEnemy[translations.netData_][translations.dead_]
         ) {
-          // Find closest melee target
-          meleeEnemy = findClosestTarget(players, me);
+          // Find closest melee target (use classic or modern based on mode)
+          meleeEnemy = settings.aimbot_.mode_ === 'classic'
+            ? classicFindClosestTarget(players, me)
+            : findClosestTarget(players, me);
           state.meleeLockEnemy_ = meleeEnemy;
           state.meleeLockEnemy_lastOutOfRangeTime_ = 0;
         }
@@ -1173,7 +1181,10 @@ function aimbotTicker() {
           state.focusedEnemy_ = null;
           setAimState(new AimState('idle', null, null, true));
         }
-        enemy = findTarget(players, me);
+        // Use classic or modern target finding based on mode
+        enemy = settings.aimbot_.mode_ === 'classic' 
+          ? classicFindTarget(players, me)
+          : findTarget(players, me);
         state.currentEnemy_ = enemy;
       }
       if (enemy) {
@@ -1185,7 +1196,10 @@ function aimbotTicker() {
           state.previousEnemies_[enemy.__id] = [];
         }
         
-        const predictedPos = predictPosition(enemy, me);
+        // Use classic or modern prediction based on mode
+        const predictedPos = settings.aimbot_.mode_ === 'classic'
+          ? classicPredictPosition(enemy, me, state.previousEnemies_[enemy.__id])
+          : predictPosition(enemy, me);
         if (!predictedPos) {
           setAimState(new AimState('idle'));
           aimOverlays.hideAll();

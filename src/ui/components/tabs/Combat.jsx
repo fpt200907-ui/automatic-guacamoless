@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Checkbox, { WarningCheckbox } from '@/ui/components/interaction/Checkbox.jsx';
+import Dropdown from '@/ui/components/interaction/Dropdown.jsx';
 import Slider, { WarningSlider } from '@/ui/components/interaction/Slider.jsx';
 import SectionTitle from '@/ui/components/layout/SectionTitle.jsx';
 import { Icons } from '@/ui/components/icons.jsx';
@@ -89,6 +90,16 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
               <div className="feature-settings">
                 {f.id === 'aimbot' && (
                   <>
+                    <Dropdown
+                      id="aimbot-mode"
+                      label="Aimbot Mode"
+                      value={settings.aimbot_.mode_ || 'modern'}
+                      options={[
+                        { value: 'modern', label: 'Modern (Advanced)' },
+                        { value: 'classic', label: 'Classic (v1.5.1)' },
+                      ]}
+                      onChange={(v) => onSettingChange((s) => (s.aimbot_.mode_ = v))}
+                    />
                     <Checkbox id="aimbot-target-knocked" label="Target Knocked" checked={settings.aimbot_.targetKnocked_} onChange={(v) => onSettingChange((s) => (s.aimbot_.targetKnocked_ = v))} />
                     <Checkbox id="aimbot-sticky-target" label="Sticky Target" checked={settings.aimbot_.stickyTarget_} onChange={(v) => onSettingChange((s) => (s.aimbot_.stickyTarget_ = v))} />
                     <Checkbox id="aimbot-show-dot" label="Show Dot" checked={settings.aimbot_.showDot_} onChange={(v) => onSettingChange((s) => (s.aimbot_.showDot_ = v))} />

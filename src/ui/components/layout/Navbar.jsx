@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  Crosshair, Target, Eye, Settings, HelpCircle, Palette
+  Crosshair, Target, Eye, Settings, HelpCircle, Palette, Sliders
 } from 'lucide-preact';
 
 const Navbar = ({ activeTab, onTabChange }) => {
@@ -10,6 +10,7 @@ const Navbar = ({ activeTab, onTabChange }) => {
     { id: 'visuals', label: 'Visuals', icon: Eye },
     { id: 'misc', label: 'Misc', icon: Settings },
     { id: 'themes', label: 'Themes', icon: Palette },
+    { id: 'config', label: 'Config', icon: Sliders },
     { id: 'help', label: 'Help', icon: HelpCircle },
   ];
 

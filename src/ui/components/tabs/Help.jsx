@@ -3,6 +3,9 @@ import KeybindSlot from '@/ui/components/interaction/KeybindSlot.jsx';
 import { Icons } from '@/ui/components/icons.jsx';
 
 const Help = ({ settings, onSettingChange }) => {
+  const handleMenuKeybindChange = (newKey) => {
+    onSettingChange((s) => (s.keybinds_.toggleMenu_ = newKey));
+  };
   return (
     <div className="section help-section">
       <div className="help-title">
@@ -12,7 +15,11 @@ const Help = ({ settings, onSettingChange }) => {
 
       <div className="help-panel" style={{ marginBottom: '0.75rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.375rem' }}>
-          <KeybindSlot keybind={settings?.keybinds_?.toggleMenu_ || 'ShiftRight'} />
+          <KeybindSlot
+            keybind={settings?.keybinds_?.toggleMenu_ || 'ShiftRight'}
+            editable={true}
+            onClick={handleMenuKeybindChange}
+          />
           <span className="keybind-description">Show/Hide Menu</span>
         </div>
         <p className="keybind-help-text">

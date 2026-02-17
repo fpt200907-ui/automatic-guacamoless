@@ -6,6 +6,7 @@ import VisualsTab from '@/ui/components/tabs/Visuals.jsx';
 import MiscTab from '@/ui/components/tabs/Misc.jsx';
 import HelpTab from '@/ui/components/tabs/Help.jsx';
 import ThemesTab from '@/ui/components/tabs/Themes.jsx';
+import ConfigTab from '@/ui/components/tabs/Config.jsx';
 import { outer, outerDocument } from '@/core/outer.js';
 import { ref_addEventListener, ref_removeEventListener } from '@/core/hook';
 
@@ -125,6 +126,8 @@ const Menu = ({ settings, onSettingChange, onClose, version }) => {
         return <MiscTab settings={settings} onSettingChange={onSettingChange} />;
       case 'themes':
         return <ThemesTab settings={settings} onSettingChange={onSettingChange} />;
+      case 'config':
+        return <ConfigTab settings={settings} onSettingChange={onSettingChange} />;
       case 'help':
         return <HelpTab settings={settings} onSettingChange={onSettingChange} />;
       default:

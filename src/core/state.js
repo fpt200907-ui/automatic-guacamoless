@@ -37,6 +37,7 @@ export const defaultSettings = {
     showDot_: true,
     wallcheck_: true,
     autoAttack_: false,
+    mode_: 'modern', // 'modern' or 'classic'
   },
   meleeLock_: {
     enabled_: true,
@@ -154,6 +155,7 @@ export const settingsKeys = {
     showDot_: '󠀢',
     wallcheck_: '󠀣',
     autoAttack_: 'fx',
+    mode_: '󠀨',
   },
   meleeLock_: {
     _k: '󠁑',
