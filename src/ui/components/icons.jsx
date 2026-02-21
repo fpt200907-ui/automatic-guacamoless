@@ -1,4 +1,5 @@
 import {
+  Search,
   Target,
   Sword,
   ArrowLeftRight,
@@ -62,7 +63,7 @@ export const Icons = {
   PanHero_: Shield,
   GrenadeAssist_: Package,
   Visual_: Eye,
-  Main_: Crosshair,
+  Main_: Search,
   Misc_: Shield,
   HelpN_: MessageCircleQuestionMark,
 };

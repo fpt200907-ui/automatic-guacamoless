@@ -35,9 +35,12 @@ export const defaultSettings = {
     targetKnocked_: true,
     stickyTarget_: true,
     showDot_: true,
+    showFovCircle_: false,
     wallcheck_: true,
     autoAttack_: false,
     mode_: 'modern', // 'modern' or 'classic'
+    classicFov_: 360, // Field of View for classic mode (degrees)
+    classicSmooth_: 50, // Aim smoothing intensity (0-100)
   },
   meleeLock_: {
     enabled_: true,
@@ -153,9 +156,12 @@ export const settingsKeys = {
     targetKnocked_: '󠀁',
     stickyTarget_: '󠀻',
     showDot_: '󠀢',
+    showFovCircle_: '󠀫',
     wallcheck_: '󠀣',
     autoAttack_: 'fx',
     mode_: '󠀨',
+    classicFov_: '󠀩',
+    classicSmooth_: '󠀪',
   },
   meleeLock_: {
     _k: '󠁑',
@@ -255,6 +261,7 @@ export const settingsKeys = {
     _k: '󠅁󠅁',
     enabled_: '󠅁',
   },
+
   grenadeTimer_: {
     _k: '󠅉',
     duration_: '󠅊',

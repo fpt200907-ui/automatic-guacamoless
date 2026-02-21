@@ -1,29 +1,9 @@
-import { gameManager, settings, inputState, aimState } from '@/core/state.js';
+import { gameManager, settings, inputState } from '@/core/state.js';
 import { translations } from '@/core/obfuscatedNameTranslator.js';
 import { inputCommands, PIXI } from '@/utils/constants.js';
 import { setAimState, AimState } from '@/core/aimController.js';
 import { outer } from '@/core/outer.js';
 import { ref_addEventListener } from '@/core/hook.js';
-import { collisionHelpers } from '@/utils/math.js';
-
-const getAimbotData = () => {
-  try {
-    const AimbotModule = globalThis.__AIMBOT_MODULE__ || {};
-    return {
-      hasValidTarget: AimbotModule.hasValidTarget || (() => false),
-      getCurrentTarget: AimbotModule.getCurrentTarget || (() => null),
-      isEnemyBehindWall: AimbotModule.isEnemyBehindWall || (() => false),
-      getAimbotShootableState: AimbotModule.getAimbotShootableState || (() => false),
-    };
-  } catch (e) {
-    return {
-      hasValidTarget: () => false,
-      getCurrentTarget: () => null,
-      isEnemyBehindWall: () => false,
-      getAimbotShootableState: () => false,
-    };
-  }
-};
 
 const CRATE_PATTERNS = [
 
@@ -91,25 +71,18 @@ const CRATE_PATTERNS = [
   'pumpkin',
 ];
 
-// Configuration
-const DEFAULT_DETECTION_RADIUS = 7.6; // Radius to detect crates
-const DEFAULT_ATTACK_RADIUS = 7.5; // Attack when very close (melee range)
-const DEFAULT_MOVEMENT_RADIUS = 8; // Move towards crate until within this range
-const MELEE_SLOT = 2; // Assuming melee weapon is in slot 2
+const MELEE_SLOT = 2;
+const PRIMARY_BUTTON = 0;
+const PROXIMITY_THRESHOLD = 5;
 
-// ESP Configuration
-const ESP_LINE_COLOR = 0xFFFF00; // Yellow
+const ESP_LINE_COLOR = 0xFFFF00;
 const ESP_LINE_ALPHA = 0.8;
 const ESP_LINE_WIDTH = 2.5;
-// Mouse button constant
-const PRIMARY_BUTTON = 0;
 
-// State
 let currentTarget = null;
-let lastAttackTime = 0;
 let isAutoAttacking = false;
-let lastMeleeSwitchTime = -Infinity; // Start with very old time so first attack doesn't wait
-const MELEE_SWITCH_DELAY = 50; // Wait 50ms after switching to melee before attacking
+let lastMeleeSwitchTime = -Infinity;
+const MELEE_SWITCH_DELAY = 50;
 
 /**
  * Check if an object is a breakable crate/container
@@ -130,75 +103,17 @@ function sameLayer(objLayer, playerLayer) {
   return objLayer === playerLayer;
 }
 
-const BLOCKING_PATTERNS = [
-  'bollard_',
-  'sandbags_',
-  'hedgehog',
-  'silo_',
-  'metal_wall_',
-  'brick_wall_',
-  'concrete_wall_',
-  'container_wall_',
-  'warehouse_wall_',
-];
-
 /**
- * Check if an obstacle is blocking the path to a crate
- */
-function isObstacleBlocking(obstacle) {
-  if (obstacle.collidable === false) return false;
-  if (obstacle.dead) return false;
-  
-  const type = obstacle.type || '';
-  
-  if (obstacle.isWall === true || obstacle.destructible === false) {
-    // Exception: Don't block if it's the target itself (unlikely here but safe)
-    return true;
-  }
-
-  return BLOCKING_PATTERNS.some(pattern => type.includes(pattern));
-}
-
-/**
- * Check if target is visible from player position (not behind wall)
- */
-function isTargetVisible(playerPos, targetPos, playerLayer) {
-  const game = gameManager.game;
-  const idToObj = game?.[translations.objectCreator_]?.[translations.idToObj_];
-  if (!idToObj) return true;
-
-  const dist = Math.hypot(targetPos.x - playerPos.x, targetPos.y - playerPos.y);
-  if (dist < 1) return true; // Too close to be blocked accurately
-
-  for (const obj of Object.values(idToObj)) {
-    if (!obj.collider || obj.dead) continue;
-    if (obj.layer !== undefined && !sameLayer(obj.layer, playerLayer)) continue;
-    if (!isObstacleBlocking(obj)) continue;
-
-    // Raycast check using collider intersection
-    const hit = collisionHelpers.intersectSegment_(obj.collider, playerPos, targetPos);
-    if (hit) {
-      // Check if hit point is significantly before the target
-      const hitDist = Math.hypot(hit.point.x - playerPos.x, hit.point.y - playerPos.y);
-      if (hitDist < dist - 0.5) return false;
-    }
-  }
-  return true;
-}
-
-/**
- * Find the closest crate to the player
+ * Find closest crate near player
  */
 function findClosestCrate(player) {
-  const detectionRadius = settings.autoCrateBreak_?.detectionRadius_ ?? DEFAULT_DETECTION_RADIUS;
   const game = gameManager.game;
   const idToObj = game?.[translations.objectCreator_]?.[translations.idToObj_];
   if (!idToObj) return null;
   
   const playerPos = player[translations.visualPos_];
-  if (!playerPos) return null;
-  
   const playerLayer = player.layer;
+  
   let bestCrate = null;
   let bestDistance = Infinity;
   
@@ -210,43 +125,45 @@ function findClosestCrate(player) {
     if (!objPos) continue;
     
     const distance = Math.hypot(playerPos.x - objPos.x, playerPos.y - objPos.y);
-    if (distance > detectionRadius) continue;
-    
-    // Check if target is visible (not behind wall)
-    if (!isTargetVisible(playerPos, objPos, playerLayer)) continue;
     
     if (distance < bestDistance) {
       bestDistance = distance;
       bestCrate = obj;
     }
   }
+  
   return bestCrate ? { obj: bestCrate, distance: bestDistance } : null;
 }
 
 /**
- * Calculate movement direction towards crate
+ * Draw ESP line to the current target
  */
-function getMoveDirection(playerPos, cratePos) {
-  const dx = cratePos.x - playerPos.x;
-  const dy = cratePos.y - playerPos.y;
-  const angle = Math.atan2(dy, dx);
+function drawESPLine(game, me, target) {
+  if (!me || !me.container) return;
+  const container = me.container;
+  const targetId = 'autoCrateESP';
   
-  return {
-    touchMoveActive: true,
-    touchMoveLen: 255,
-    x: Math.cos(angle),
-    y: Math.sin(angle),
-  };
-}
-
-/**
- * Queue melee weapon switch
- */
-function switchToMelee() {
-  if (!inputState.queuedInputs_.includes(inputCommands.EquipMelee_)) {
-    inputState.queuedInputs_.push(inputCommands.EquipMelee_);
-    lastMeleeSwitchTime = performance.now();
+  if (!container[targetId]) {
+    if (!PIXI.Graphics_) return;
+    container[targetId] = new PIXI.Graphics_();
+    container.addChild(container[targetId]);
   }
+
+  const graphics = container[targetId];
+  if (!graphics) return;
+  graphics.clear();
+
+  if (!target || !settings.autoCrateBreak_?.enabled_) return;
+
+  const cratePos = target[translations.visualPos_] || target.pos;
+  const mePos = me[translations.visualPos_];
+  if (!cratePos || !mePos) return;
+  const endX = (cratePos.x - mePos.x) * 16; 
+  const endY = (mePos.y - cratePos.y) * 16;
+
+  graphics.lineStyle(ESP_LINE_WIDTH, ESP_LINE_COLOR, ESP_LINE_ALPHA);
+  graphics.moveTo(0, 0);
+  graphics.lineTo(endX, endY);
 }
 
 /**
@@ -290,39 +207,7 @@ export function initAutoCrateBreakSettings() {
 }
 
 /**
- * Draw ESP line to the current target
- */
-function drawESPLine(game, me, target) {
-  if (!me || !me.container) return;
-  const container = me.container;
-  const targetId = 'autoCrateESP';
-  
-  if (!container[targetId]) {
-    if (!PIXI.Graphics_) return;
-    container[targetId] = new PIXI.Graphics_();
-    container.addChild(container[targetId]);
-  }
-
-  const graphics = container[targetId];
-  if (!graphics) return;
-  graphics.clear();
-
-  if (!target || !settings.autoCrateBreak_?.enabled_) return;
-
-  const cratePos = target[translations.visualPos_] || target.pos;
-  const mePos = me[translations.visualPos_];
-  if (!cratePos || !mePos) return;
-  const endX = (cratePos.x - mePos.x) * 16; 
-  const endY = (mePos.y - cratePos.y) * 16;
-
-  graphics.lineStyle(ESP_LINE_WIDTH, ESP_LINE_COLOR, ESP_LINE_ALPHA);
-  graphics.moveTo(0, 0);
-  graphics.lineTo(endX, endY);
-}
-
-/**
  * Check if player is currently healing
- * Based on AutoHeal.js mechanism: check activeWeapon in netData
  */
 function isPlayerHealing(player) {
   if (!player) return false;
@@ -332,7 +217,6 @@ function isPlayerHealing(player) {
   
   if (!activeWeapon) return false;
   
-  // Check if active weapon is a healing item
   const weaponLower = activeWeapon.toLowerCase();
   return (
     weaponLower.includes('bandage') || 
@@ -345,18 +229,7 @@ function isPlayerHealing(player) {
 }
 
 /**
- * Check if player has switched to a gun (non-melee weapon)
- */
-function isPlayerWithGun(player) {
-  if (!player) return false;
-  
-  const currentWeaponIndex = player[translations.localData_]?.[translations.curWeapIdx_];
-  // If weapon index is not melee (slot 2), and not empty slot, player has a gun
-  return currentWeaponIndex !== MELEE_SLOT && currentWeaponIndex !== undefined && currentWeaponIndex !== null;
-}
-
-/**
- * Main update function
+ * Main update function - detect crate proximity and attack
  */
 export function updateAutoCrateBreak(player) {
   if (!settings.autoCrateBreak_?.enabled_) {
@@ -369,7 +242,7 @@ export function updateAutoCrateBreak(player) {
     return null;
   }
 
-  // CANCELLATION: If player is healing, stop auto break
+  // Stop if player is healing
   if (isPlayerHealing(player)) {
     currentTarget = null;
     if (isAutoAttacking) {
@@ -380,41 +253,9 @@ export function updateAutoCrateBreak(player) {
     return null;
   }
 
-  // CANCELLATION: If player switches to a gun, stop auto break
-  if (isPlayerWithGun(player)) {
-    currentTarget = null;
-    if (isAutoAttacking) {
-      simulateMouseUp();
-      isAutoAttacking = false;
-    }
-    drawESPLine(gameManager.game, player, null);
-    return null;
-  }
-
-  // CHECK AIMBOT: If aimbot has a valid target and it's shootable, stop crate break
-  const aimbot = getAimbotData();
-  if (aimbot.hasValidTarget?.()) {
-    const aimbotTarget = aimbot.getCurrentTarget?.();
-    if (aimbotTarget) {
-      const player_ = gameManager.game?.[translations.activePlayer_];
-      // Check if target is NOT behind wall or is shootable
-      const isNotBehindWall = !aimbot.isEnemyBehindWall?.(player_, aimbotTarget);
-      const isShootable = aimbot.getAimbotShootableState?.();
-      
-      if (isNotBehindWall || isShootable) {
-        currentTarget = null;
-        if (isAutoAttacking) {
-          simulateMouseUp();
-          isAutoAttacking = false;
-        }
-        drawESPLine(gameManager.game, player, null);
-        return null;
-      }
-    }
-  }
-
   // Find closest crate
   const crateInfo = findClosestCrate(player);
+  
   if (!crateInfo) {
     currentTarget = null;
     if (isAutoAttacking) {
@@ -424,42 +265,55 @@ export function updateAutoCrateBreak(player) {
     drawESPLine(gameManager.game, player, null);
     return null;
   }
+
+  const distance = crateInfo.distance;
+  const crate = crateInfo.obj;
   
-  currentTarget = crateInfo.obj;
-  drawESPLine(gameManager.game, player, currentTarget);
-  
-  const cratePos = currentTarget[translations.visualPos_] || currentTarget.pos;
-  const game = gameManager.game;
-  
-  const currentWeaponIndex = player[translations.localData_]?.[translations.curWeapIdx_];
-  const isMeleeEquipped = currentWeaponIndex === MELEE_SLOT;
-  
-  const screenPos = game[translations.camera_][translations.pointToScreen_]({
-    x: cratePos.x,
-    y: cratePos.y,
-  });
-  
-  // Check engagement - start attacking when close enough
-  if (crateInfo.distance <= DEFAULT_ATTACK_RADIUS) {
+  // Activate auto-crate if within proximity threshold
+  if (distance <= PROXIMITY_THRESHOLD) {
+    currentTarget = crate;
+    drawESPLine(gameManager.game, player, currentTarget);
+    
+    const cratePos = crate[translations.visualPos_] || crate.pos;
+    const game = gameManager.game;
+    
+    const currentWeaponIndex = player[translations.localData_]?.[translations.curWeapIdx_];
+    const isMeleeEquipped = currentWeaponIndex === MELEE_SLOT;
+    
+    // Switch to melee if needed
     if (!isMeleeEquipped && settings.autoCrateBreak_?.autoSwitchMelee_) {
-      switchToMelee();
+      inputState.queuedInputs_.push(inputCommands.EquipMelee_);
+      lastMeleeSwitchTime = performance.now();
     }
-    // Continue moving while attacking
-    const moveDir = getMoveDirection(player[translations.visualPos_], cratePos);
-    return new AimState('crateBreak', { x: screenPos.x, y: screenPos.y }, moveDir, true);
+    
+    // Start attacking
+    if (settings.autoCrateBreak_?.autoAttack_) {
+      const timeSinceMeleeSwitch = performance.now() - lastMeleeSwitchTime;
+      if (timeSinceMeleeSwitch > MELEE_SWITCH_DELAY && isMeleeEquipped) {
+        if (!isAutoAttacking) {
+          simulateMouseDown();
+          isAutoAttacking = true;
+        }
+      }
+    }
+    
+    const screenPos = game[translations.camera_][translations.pointToScreen_]({
+      x: cratePos.x,
+      y: cratePos.y,
+    });
+    
+    return new AimState('crateBreak', { x: screenPos.x, y: screenPos.y }, null, true);
+  } else {
+    // Outside proximity - stop attacking
+    currentTarget = null;
+    if (isAutoAttacking) {
+      simulateMouseUp();
+      isAutoAttacking = false;
+    }
+    drawESPLine(gameManager.game, player, null);
   }
   
-  // If within movement range but not attack range - prepare melee
-  if (crateInfo.distance <= DEFAULT_MOVEMENT_RADIUS) {
-    if (!isMeleeEquipped && settings.autoCrateBreak_?.autoSwitchMelee_) {
-      switchToMelee();
-    }
-  }
-  
-  // Movement logic - always move towards crate
-  const moveDir = getMoveDirection(player[translations.visualPos_], cratePos);
-  
-  return new AimState('crateBreak', { x: screenPos.x, y: screenPos.y }, moveDir, true);
+  return null;
 }
 
 export function getCurrentCrateTarget() {
@@ -467,7 +321,7 @@ export function getCurrentCrateTarget() {
 }
 
 /**
- * Auto attack ticker - runs every 16ms to maintain attack state
+ * Maintain attack state
  */
 function autoCrateAttackTicker() {
   if (!settings.autoCrateBreak_?.enabled_) {
@@ -486,7 +340,6 @@ function autoCrateAttackTicker() {
     return;
   }
 
-  // Check if we should still be attacking
   const game = gameManager.game;
   if (!game) return;
   
@@ -500,15 +353,19 @@ function autoCrateAttackTicker() {
   const distance = Math.hypot(playerPos.x - cratePos.x, playerPos.y - cratePos.y);
   const currentWeaponIndex = player[translations.localData_]?.[translations.curWeapIdx_];
   const isMeleeEquipped = currentWeaponIndex === MELEE_SLOT;
+  
+  // Stop attacking if moved away from crate
+  if (distance > PROXIMITY_THRESHOLD) {
+    if (isAutoAttacking) {
+      simulateMouseUp();
+      isAutoAttacking = false;
+    }
+    currentTarget = null;
+    return;
+  }
 
-  // Check layer before attacking
-  const playerLayer = player.layer;
-  const crateLayer = currentTarget.layer;
-  const onSameLayer = sameLayer(crateLayer, playerLayer);
-
-  // Auto-hold attack while in attack range
-  if (distance <= DEFAULT_ATTACK_RADIUS && isMeleeEquipped && onSameLayer && settings.autoCrateBreak_?.autoAttack_) {
-    // Wait a bit after melee switch before attacking
+  // Maintain attack while in range and melee is equipped
+  if (isMeleeEquipped && settings.autoCrateBreak_?.autoAttack_) {
     const timeSinceMeleeSwitch = performance.now() - lastMeleeSwitchTime;
     if (timeSinceMeleeSwitch > MELEE_SWITCH_DELAY) {
       if (!isAutoAttacking) {
@@ -523,9 +380,6 @@ function autoCrateAttackTicker() {
 }
 
 export default function autoCrateBreak() {
-  initAutoCrateBreakSettings();
-  
-  // Handle mouse events to properly stop attacking
   const handleMouseUp = () => {
     if (isAutoAttacking) {
       isAutoAttacking = false;
@@ -534,6 +388,5 @@ export default function autoCrateBreak() {
   
   Reflect.apply(ref_addEventListener, outer, ['mouseup', handleMouseUp]);
   
-  // Start auto attack ticker to maintain attack state
   setInterval(autoCrateAttackTicker, 16);
 }

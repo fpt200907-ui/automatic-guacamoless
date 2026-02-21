@@ -1,17 +1,17 @@
 import React from 'react';
 import { 
-  Crosshair, Target, Eye, Settings, HelpCircle, Palette, Sliders
+  Search, Crosshair, Eye, MoreHorizontal, HelpCircle, Palette, Sliders
 } from 'lucide-preact';
 
 const Navbar = ({ activeTab, onTabChange }) => {
   const categories = [
-    { id: 'main', label: 'Search', icon: Crosshair },
-    { id: 'combat', label: 'Combat', icon: Target },
+    { id: 'main', label: 'Search', icon: Search },
+    { id: 'combat', label: 'Combat', icon: Crosshair },
     { id: 'visuals', label: 'Visuals', icon: Eye },
-    { id: 'misc', label: 'Misc', icon: Settings },
+    { id: 'misc', label: 'Misc', icon: MoreHorizontal },
     { id: 'themes', label: 'Themes', icon: Palette },
     { id: 'config', label: 'Config', icon: Sliders },
-    { id: 'help', label: 'Help', icon: HelpCircle },
+    { id: 'help', label: 'About', icon: HelpCircle },
   ];
 
   return (

@@ -55,6 +55,11 @@ const VELOCITY_SMOOTHING_ACCEL = 0.88; // Increased from 0.85 for better acceler
 const ACCELERATION_INFLUENCE = 0.12; // Reduced from 0.15 to prevent overshoot (improved)
 const HISTORY_SIZE = 18; // Increased from 15 for better trend fitting (improved)
 const FPS_BUFFER_SIZE = 16; // Increased from 12 for more stable FPS averaging (improved)
+const MELEE_PREDICTION_TIME = 0.12; // Extended from 0.08 for better prediction at distance (improved)
+const MELEE_ACCEL_INFLUENCE = 0.08; // Acceleration contribution for melee prediction (new)
+const MELEE_MIN_ENGAGEMENT_RANGE = 4.5; // Minimum range to engage (adaptive)
+const MELEE_MAX_ENGAGEMENT_RANGE = 7.5; // Maximum range to stay engaged (adaptive)
+const MELEE_PING_COMPENSATION = true; // Enable lag compensation (new)
 
 const computeAimAngle = (point) => {
   if (!point) return 0;
@@ -933,8 +938,17 @@ function aimbotTicker() {
         distanceToMeleeEnemy = Math.hypot(mePos.x - enemyPos.x, mePos.y - enemyPos.y);
       }
 
+      // NEW: Adaptive engagement range based on enemy movement
+      let adaptiveEngagementRange = MELEE_ENGAGE_DISTANCE;
+      if (meleeEnemy?.velocity_) {
+        const enemySpeed = Math.hypot(meleeEnemy.velocity_.x, meleeEnemy.velocity_.y);
+        // Adjust range: faster moving enemies = larger engagement radius
+        adaptiveEngagementRange = MELEE_MIN_ENGAGEMENT_RANGE + 
+          Math.min(3, (enemySpeed / 10) * 0.5); // Scale with speed
+      }
+
       // Check if melee target is within engagement range
-      const meleeTargetInRange = distanceToMeleeEnemy <= MELEE_ENGAGE_DISTANCE;
+      const meleeTargetInRange = distanceToMeleeEnemy <= adaptiveEngagementRange;
       
       // Apply grace period: keep lock for a moment even if target moves out of range
       const now = Date.now();
@@ -981,7 +995,6 @@ function aimbotTicker() {
           let targetPos = bodyCenter;
           
           if (MELEE_PREDICTION_ENABLED) {
-            // Use more aggressive prediction for melee targets
             const enemyId = meleeEnemy.__id;
             const history = state.previousEnemies_[enemyId] ?? (state.previousEnemies_[enemyId] = []);
             const now = performance.now();
@@ -992,6 +1005,7 @@ function aimbotTicker() {
             // Only predict if we have enough history
             if (history.length >= 3) {
               let vx = 0, vy = 0;
+              let ax = 0, ay = 0; // Acceleration
               
               // Calculate velocity from most recent movements
               let sumDt = 0, sumDtDvx = 0, sumDtDvy = 0;
@@ -1011,18 +1025,62 @@ function aimbotTicker() {
                 vy = sumDtDvy / sumDt;
               }
               
-              // Apply short-term prediction (80ms ahead) for melee, from body center
-              const predictionTime = 0.08;
+              // NEW: Calculate acceleration for better prediction
+              // Compare current velocity with previous velocity
+              if (history.length >= 4) {
+                let prevVx = 0, prevVy = 0;
+                let prevSumDt = 0, prevSumDvx = 0, prevSumDvy = 0;
+                
+                // Use older points to calculate previous velocity
+                for (let i = Math.max(1, history.length - 3); i < Math.min(history.length - 1, history.length - 1); i++) {
+                  const dt = (history[i][0] - history[i-1][0]) / 1000;
+                  if (dt > 0) {
+                    const dvx = history[i][1].x - history[i-1][1].x;
+                    const dvy = history[i][1].y - history[i-1][1].y;
+                    prevSumDt += dt;
+                    prevSumDvx += dvx;
+                    prevSumDvy += dvy;
+                  }
+                }
+                
+                if (prevSumDt > 0) {
+                  prevVx = prevSumDvx / prevSumDt;
+                  prevVy = prevSumDvy / prevSumDt;
+                  
+                  // Acceleration = (vCurrent - vPrevious) / time
+                  const accelDt = (history[history.length - 1][0] - (history.length >= 3 ? history[history.length - 3][0] : history[0][0])) / 1000;
+                  if (accelDt > 0.005) { // At least 5ms apart
+                    ax = (vx - prevVx) / accelDt;
+                    ay = (vy - prevVy) / accelDt;
+                    
+                    // Clamp acceleration to prevent overshooting
+                    const maxAccel = 50;
+                    ax = Math.max(-maxAccel, Math.min(maxAccel, ax));
+                    ay = Math.max(-maxAccel, Math.min(maxAccel, ay));
+                  }
+                }
+              }
+              
+              // NEW: Anti-lag compensation
+              let predictionTime = MELEE_PREDICTION_TIME;
+              if (MELEE_PING_COMPENSATION) {
+                const ping = getPing?.() || 50;
+                // Add 15-30% of ping as extra prediction time for lag compensation
+                const lagCompensation = (ping / 1000) * 0.15;
+                predictionTime += lagCompensation;
+              }
+              
+              // Apply prediction with velocity + acceleration
+              // Position = current + velocity*time + 0.5*acceleration*time²
               targetPos = {
-                x: bodyCenter.x + vx * predictionTime,
-                y: bodyCenter.y + vy * predictionTime,
+                x: bodyCenter.x + vx * predictionTime + 0.5 * ax * (predictionTime * predictionTime) * MELEE_ACCEL_INFLUENCE,
+                y: bodyCenter.y + vy * predictionTime + 0.5 * ay * (predictionTime * predictionTime) * MELEE_ACCEL_INFLUENCE,
               };
             }
           }
 
           // Apply collinearity optimization: ensure 3 points (player - targetPos - enemy) are collinear
           // This aligns melee lock aim to the vector player→enemy for optimal hitbox alignment
-          // Using Method 2 (cross-product check) - ensures points stay within tolerance of the line
           targetPos = ensureCollinear(mePos, enemyPos, targetPos, 2.0);
 
           // Calculate base forward movement direction towards enemy
@@ -1030,34 +1088,67 @@ function aimbotTicker() {
           const forwardX = Math.cos(forwardAngle);
           const forwardY = Math.sin(forwardAngle);
 
+          // Helper: Normalize angle difference to -PI..PI range
+          const normalizeAngleDiff = (diff) => {
+            let d = diff;
+            while (d > Math.PI) d -= 2 * Math.PI;
+            while (d < -Math.PI) d += 2 * Math.PI;
+            return d;
+          };
+
           // Calculate evasion (dodge enemy's melee range)
           // Use angle-based blending instead of vector blending to maintain full movement speed
           let movementAngle = forwardAngle;
           
           if (settings.meleeLock_.enableEvasion_ && distanceToMeleeEnemy < settings.meleeLock_.evasionRange_) {
-            // We're within enemy's melee danger zone - evade by rotating movement direction
+            // We're within enemy's melee danger zone - evade intelligently
             // Calculate enemy's facing angle
             const enemyFacingAngle = Math.atan2(meleeEnemy[translations.dir_].x, meleeEnemy[translations.dir_].y) - Math.PI / 2;
+            
+            // Priority 1: Try to position directly behind enemy (180° from their facing)
             const directionBehind = enemyFacingAngle + Math.PI;
             
-            // Calculate which side (left/right) brings us closer to behind
-            const leftAngle = forwardAngle + Math.PI / 2;
-            const rightAngle = forwardAngle - Math.PI / 2;
-            const distToLeftBehind = Math.abs(leftAngle - directionBehind);
-            const distToRightBehind = Math.abs(rightAngle - directionBehind);
+            // Priority 2: Position to left/right sides (90° offset from facing)
+            const leftAngle = enemyFacingAngle + Math.PI / 2;
+            const rightAngle = enemyFacingAngle - Math.PI / 2;
             
-            const evadeAngle = distToLeftBehind < distToRightBehind ? leftAngle : rightAngle;
+            // Choose best evasion direction: behind > sides
+            // Calculate angles to each position relative to current forward direction
+            const angleToBehind = Math.abs(normalizeAngleDiff(directionBehind - forwardAngle));
+            const angleToLeft = Math.abs(normalizeAngleDiff(leftAngle - forwardAngle));
+            const angleToRight = Math.abs(normalizeAngleDiff(rightAngle - forwardAngle));
             
-            // Blend angles instead of vectors to maintain full movement speed
-            const evasionIntensity = Math.max(0, (settings.meleeLock_.evasionRange_ - distanceToMeleeEnemy) / settings.meleeLock_.evasionRange_);
+            // Find the evasion target with highest priority (smallest angle difference)
+            let evadeAngle;
+            let evasionPriority = 0; // 0=behind, 1=side
+            
+            if (angleToBehind < angleToLeft && angleToBehind < angleToRight) {
+              // Go behind
+              evadeAngle = directionBehind;
+              evasionPriority = 0;
+            } else {
+              // Go to side (pick closer side)
+              evadeAngle = angleToLeft < angleToRight ? leftAngle : rightAngle;
+              evasionPriority = 1;
+            }
+            
+            // Calculate evasion intensity: stronger when very close
+            const normalizedDist = Math.max(0, settings.meleeLock_.evasionRange_ - distanceToMeleeEnemy) / settings.meleeLock_.evasionRange_;
+            const evasionIntensity = normalizedDist * normalizedDist; // Square for sharper response near melee range
             const evasionWeight = (settings.meleeLock_.evasionStrength_ / 100) * evasionIntensity;
             
             // Rotate movement angle towards evasion angle
-            let angleDiff = evadeAngle - forwardAngle;
-            // Normalize angle difference to -PI..PI
-            while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-            while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+            let angleDiff = normalizeAngleDiff(evadeAngle - forwardAngle);
             movementAngle = forwardAngle + angleDiff * evasionWeight;
+            
+            // Add circular movement component when at optimal evasion distance
+            // This creates unpredictable circling motion around enemy
+            if (evasionPriority === 1) { // Only circle when on sides
+              const circlePhase = (Date.now() * 0.002) % (2 * Math.PI); // Slow rotation
+              const circleAmount = 0.3; // 30% circular motion
+              const circleAngle = normalizeAngleDiff((circlePhase + (evasionWeight > 0.5 ? Math.PI : 0)) - movementAngle);
+              movementAngle += circleAngle * circleAmount * evasionIntensity;
+            }
           }
           
           // Calculate final approach direction from angle (always unit vector, full speed)
@@ -1073,12 +1164,12 @@ function aimbotTicker() {
             let strafeX = 0, strafeY = 0;
             
             if (strafeRoll < strafeChancePct * 0.5) {
-              // Strafe right
+              // Strafe right - perpendicular to forward direction
               const strafeIntensity = settings.meleeLock_.strafeIntensity_ / 100;
               strafeX = Math.sin(forwardAngle) * strafeIntensity;
               strafeY = -Math.cos(forwardAngle) * strafeIntensity;
             } else if (strafeRoll < strafeChancePct) {
-              // Strafe left
+              // Strafe left - perpendicular to forward direction
               const strafeIntensity = settings.meleeLock_.strafeIntensity_ / 100;
               strafeX = -Math.sin(forwardAngle) * strafeIntensity;
               strafeY = Math.cos(forwardAngle) * strafeIntensity;
@@ -1306,6 +1397,16 @@ function aimbotTicker() {
         displayPos = { x: previewTargetPos.x, y: previewTargetPos.y };
       }
       aimOverlays.updateDot(displayPos, isDotTargetShootable, !!state.focusedEnemy_);
+      
+      // Update FOV circle for classic mode
+      if (settings.aimbot_.mode_ === 'classic' && settings.aimbot_.enabled_) {
+        const fovDegrees = settings.aimbot_.classicFov_ || 360;
+        const fovRadius = (fovDegrees / 360) * 1000; // Convert to screen pixels (matches detection radius)
+        const mousePos = gameManager.game[translations.input_].mousePos;
+        aimOverlays.updateFovCircle(fovRadius, mousePos);
+      } else {
+        aimOverlays.updateFovCircle(null, null);
+      }
     } catch (error) {
       aimOverlays.hideAll();
       setAimState(new AimState('idle', null, null, true));

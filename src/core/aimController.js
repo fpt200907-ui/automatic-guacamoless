@@ -398,6 +398,7 @@ export const getAimMode = () => controllerState.mode_;
 
 const overlayState = {
   aimbotDot_: null,
+  fovCircle_: null,
   initialized_: false,
 };
 
@@ -409,6 +410,13 @@ const ensureOverlays = (uiRoot) => {
     overlayState.aimbotDot_ = outerDocument.createElement('div');
     overlayState.aimbotDot_.classList.add('aimbot-dot');
     uiRoot.appendChild(overlayState.aimbotDot_);
+  }
+
+  if (!overlayState.fovCircle_) {
+    const outerDocument = outer.document;
+    overlayState.fovCircle_ = outerDocument.createElement('div');
+    overlayState.fovCircle_.classList.add('fov-circle');
+    uiRoot.appendChild(overlayState.fovCircle_);
   }
 
   overlayState.initialized_ = true;
@@ -459,9 +467,35 @@ const updateAimbotDot = (displayPos, isDotTargetShootable, isFocusedEnemy) => {
   }
 };
 
+const updateFovCircle = (radiusPx, mousePos) => {
+  if (!overlayState.fovCircle_) return;
+
+  if (radiusPx && mousePos && settings.aimbot_.showFovCircle_) {
+    const diameter = radiusPx * 2;
+    
+    if (overlayState.fovCircle_.style.width !== `${diameter}px`) {
+      overlayState.fovCircle_.style.width = `${diameter}px`;
+      overlayState.fovCircle_.style.height = `${diameter}px`;
+    }
+
+    // Position circle at mouse position
+    const x = mousePos._x || mousePos.x || 0;
+    const y = mousePos._y || mousePos.y || 0;
+    overlayState.fovCircle_.style.left = `${x}px`;
+    overlayState.fovCircle_.style.top = `${y}px`;
+
+    overlayState.fovCircle_.style.display = 'block';
+  } else {
+    overlayState.fovCircle_.style.display = 'none';
+  }
+};
+
 const hideAllOverlays = () => {
   if (overlayState.aimbotDot_) {
     overlayState.aimbotDot_.style.display = 'none';
+  }
+  if (overlayState.fovCircle_) {
+    overlayState.fovCircle_.style.display = 'none';
   }
 };
 
@@ -469,6 +503,7 @@ export const aimOverlays = {
   ensureInitialized: (uiRoot) => ensureOverlays(uiRoot),
   updateDot: (displayPos, isShootable, isFocused) =>
     updateAimbotDot(displayPos, isShootable, isFocused),
+  updateFovCircle: (radiusPx, mousePos) => updateFovCircle(radiusPx, mousePos),
   hideAll: () => hideAllOverlays(),
   isInitialized: () => overlayState.initialized_,
 };

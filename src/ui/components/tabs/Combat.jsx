@@ -77,7 +77,7 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
         {filtered.map((f) => (
           <div key={f.id} className="feature-card-wrapper">
             <div className="feature-card-header" onClick={() => featuresWithSettings.includes(f.id) && setExpandedFeature(expandedFeature === f.id ? null : f.id)}>
-              <FeatureCard title={f.title} category={f.category} description={f.description} enabled={f.enabled} onToggle={f.onToggle} keybind={f.keybind} onKeybindChange={f.onKeybindChange} />
+              <FeatureCard title={f.title} category={f.category} description={f.description} enabled={f.enabled} onToggle={f.onToggle} keybind={f.keybind} onKeybindChange={f.onKeybindChange} featureId={f.id} />
               {featuresWithSettings.includes(f.id) && (
                 <div className={`chevron ${expandedFeature === f.id ? 'expanded' : ''}`}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -95,20 +95,24 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
                       label="Aimbot Mode"
                       value={settings.aimbot_.mode_ || 'modern'}
                       options={[
-                        { value: 'modern', label: 'Modern (Advanced)' },
-                        { value: 'classic', label: 'Classic (v1.5.1)' },
+                        { value: 'modern', label: 'Modern' },
+                        { value: 'classic', label: 'Classic' },
                       ]}
                       onChange={(v) => onSettingChange((s) => (s.aimbot_.mode_ = v))}
                     />
+                    {settings.aimbot_.mode_ === 'classic' && (
+                      <>
+                        <Slider id="classic-fov" label="FOV (°)" value={settings.aimbot_.classicFov_} onChange={(v) => onSettingChange((s) => (s.aimbot_.classicFov_ = v))} min="30" max="360" step="5" />
+                        <Slider id="classic-smooth" label="Aim Smooth" value={settings.aimbot_.classicSmooth_} onChange={(v) => onSettingChange((s) => (s.aimbot_.classicSmooth_ = v))} min="0" max="100" />
+                      </>
+                    )}
                     <Checkbox id="aimbot-target-knocked" label="Target Knocked" checked={settings.aimbot_.targetKnocked_} onChange={(v) => onSettingChange((s) => (s.aimbot_.targetKnocked_ = v))} />
                     <Checkbox id="aimbot-sticky-target" label="Sticky Target" checked={settings.aimbot_.stickyTarget_} onChange={(v) => onSettingChange((s) => (s.aimbot_.stickyTarget_ = v))} />
                     <Checkbox id="aimbot-show-dot" label="Show Dot" checked={settings.aimbot_.showDot_} onChange={(v) => onSettingChange((s) => (s.aimbot_.showDot_ = v))} />
+                    <Checkbox id="aimbot-show-fov-circle" label="Show FOV Circle" checked={settings.aimbot_.showFovCircle_} onChange={(v) => onSettingChange((s) => (s.aimbot_.showFovCircle_ = v))} />
                     <WarningCheckbox id="aimbot-wallcheck" label="Wallcheck" checked={settings.aimbot_.wallcheck_} onChange={(v) => onSettingChange((s) => (s.aimbot_.wallcheck_ = v))} />
                     <Checkbox id="aimbot-auto-attack" label="Auto Attack" checked={settings.aimbot_.autoAttack_} onChange={(v) => onSettingChange((s) => (s.aimbot_.autoAttack_ = v))} />
                   </>
-                )}
-                {f.id === 'panhero' && (
-                  <Checkbox id="panhero-target-knocked" label="Target Knocked" checked={settings.panHero_.targetKnocked_} onChange={(v) => onSettingChange((s) => (s.panHero_.targetKnocked_ = v))} />
                 )}
                 {f.id === 'meleelock' && (
                   <>

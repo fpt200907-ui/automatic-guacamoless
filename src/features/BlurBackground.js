@@ -97,7 +97,7 @@ const CSS_CONTENT = `
 #start-bottom-right:hover {
   opacity: 1 !important;
 }
-#btn-help, .account-details-top-buttons .account-leaderboard-link span, .account-details-top-buttons .account-details-button .account-link, .account-block .account-details-top .account-details-top-buttons, #ad-block-left, #social-share-block, #start-bottom-middle .footer-after, #start-bottom-middle, .publift-widget-sticky_footer-container .publift-widget-sticky_footer-container-background, .publift-widget-sticky_footer-container .publift-widget-sticky_footer, .ad-block-header div iframe, .ad-block-header .fuse-slot div {
+#btn-help, .account-details-top-buttons .account-leaderboard-link span, .account-details-top-buttons .account-details-button .account-link, .account-block .account-details-top .account-details-top-buttons, #ad-block-left, #social-share-block, #start-bottom-middle .footer-after, #start-bottom-middle, .publift-widget-sticky_footer-container .publift-widget-sticky_footer-container-background, .publift-widget-sticky_footer-container .publift-widget-sticky_footer, .ad-block-header div iframe, .ad-block-header .fuse-slot div, .publift-widget-sticky_footer-container .publift-widget-sticky_footer-container-background, .publift-widget-sticky_footer-container .publift-widget-sticky_footer {
   pointer-events: none !important;
   opacity: 0 !important;
 }
@@ -109,6 +109,25 @@ const CSS_CONTENT = `
 .GoogleCreativeContainerClass {
   display: none !important;
 }
+#btns-quick-start a, #server-select-main, #start-menu {
+ border-top-left-radius:14px;
+ border-top-right-radius:14px;
+ border-bottom-left-radius:14px;
+ border-bottom-right-radius:14px;
+}
+#start-menu .btn-custom-mode-no-indent, #btn-join-team, #btn-create-team, #btn-customize, #player-name-input-solo {
+  border-top-left-radius:14px;
+  border-top-right-radius:14px;
+  border-bottom-left-radius:14px;
+  border-bottom-right-radius:14px;
+}
+#btn-start-team, #team-menu-options .btn-darken, #team-menu-options :nth-child(1), #btn-team-queue-mode-2 , #team-server-select , #btn-team-fill-auto , #btn-start-team, #btn-team-queue-mode-1 , #btn-team-queue-mode-2 , #team-server-select , #btn-team-fill-auto , #btn-start-team, #btn-team-fill-none , #btn-team-queue-mode-1 , #btn-team-queue-mode-2 , #team-server-select , #btn-team-fill-auto , #btn-start-team, #btn-team-leave, .name-self, .name-text {
+  border-top-left-radius:14px;
+  border-top-right-radius:14px;
+  border-bottom-left-radius:14px;
+  border-bottom-right-radius:14px;
+}
+
 
 /* Google Ads Blocker CSS */
 [id^="gcc_"] {
@@ -559,7 +578,6 @@ export default function () {
           armorObservers.push(mo);
         });
       } catch { }
-
       // Weapon border handler
       try {
         setupWeaponBorderHandler();

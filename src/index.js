@@ -60,10 +60,12 @@ if (!DEV) {
   const time = Date.now();
   try {
     const data = await (window.pr || Promise.reject());
-    const availableVersion = data.tag_name;
+    // Extract version safely from response - support both tag_name and version fields
+    const availableVersion = data?.tag_name || data?.version || null;
 
     // Force update if outdated and past deadline
-    if (VERSION !== availableVersion && time > EPOCH) {
+    // Only redirect if we have a valid available version that differs from current
+    if (availableVersion && VERSION !== availableVersion && time > EPOCH) {
       setLocation('https://surminusclient1.github.io/');
       try {
         outerDocument.head.innerHTML = '';

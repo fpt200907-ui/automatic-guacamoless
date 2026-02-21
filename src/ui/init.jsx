@@ -254,13 +254,6 @@ const registerKeyboardShortcuts = (root) => {
         );
         return;
       }
-      if (event.code === settings.keybinds_.toggleSpinbot_) {
-        toggleSetting(
-          (s) => s.spinbot_.enabled_,
-          (s, v) => (s.spinbot_.enabled_ = v)
-        );
-        return;
-      }
     },
   ]);
 };
