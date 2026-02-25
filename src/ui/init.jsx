@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import Menu from '@/ui/components/Menu.jsx';
 import DiscordNotification from '@/ui/components/DiscordNotification.jsx';
-import { defaultSettings, settings, setUIRoot, markConfigLoaded } from '@/core/state.js';
+import { defaultSettings, settings, setUIRoot, markConfigLoaded, saveSettings } from '@/core/state.js';
 import { ref_addEventListener } from '@/core/hook.js';
 import { read, initStore } from '@/utils/store.js';
 import { encryptDecrypt } from '@/utils/crypto.js';
@@ -10,8 +10,7 @@ import { globalStylesheet } from '@/ui/components/styles.css';
 import { outer, outerDocument, shadowRoot, versionPromise } from '@/core/outer.js';
 import { FONT_NAME } from '@/core/hook.js';
 import { playSound, initSounds } from '@/utils/soundNotifier.js';
-import { applyM3Theme } from '@/ui/theme/m3-theme.js';
-
+import { applyM3Theme } from '@/ui/theme/m3-theme.js';import { togglePingFPS } from '@/features/PingFPS.js';
 export let menuElement;
 
 let reactRoot = null;
@@ -57,7 +56,7 @@ function handleSettingChange(updater) {
     updater(settings);
     
     // Detect enable/disable changes
-    const detectChanges = (oldObj, newObj, soundPlayed = false) => {
+    const detectChanges = (oldObj, newObj, prefix = '', soundPlayed = false) => {
       if (!oldObj || !newObj) return soundPlayed;
       
       for (const key in newObj) {
@@ -68,6 +67,10 @@ function handleSettingChange(updater) {
             
             // Play sound if state changed
             if (oldEnabled !== newEnabled) {
+              // pingFPS needs explicit init/cleanup when toggled
+              if (prefix + key === 'pingFps_') {
+                togglePingFPS(newEnabled);
+              }
               if (newEnabled === true) {
                 playSound('enable');
               } else if (newEnabled === false) {
@@ -77,7 +80,7 @@ function handleSettingChange(updater) {
             }
           }
           // Recursively check nested objects
-          if (detectChanges(oldObj[key] || {}, newObj[key], soundPlayed)) {
+          if (detectChanges(oldObj[key] || {}, newObj[key], prefix + key + '.', soundPlayed)) {
             return true;
           }
         }
@@ -91,6 +94,7 @@ function handleSettingChange(updater) {
   }
   
   renderMenu();
+  saveSettings();
 }
 
 const attachFont = async () => {
@@ -251,6 +255,13 @@ const registerKeyboardShortcuts = (root) => {
         toggleSetting(
           (s) => s.autoSwitch_.enabled_,
           (s, v) => (s.autoSwitch_.enabled_ = v)
+        );
+        return;
+      }
+      if (event.code === settings.keybinds_.togglePingFps_) {
+        toggleSetting(
+          (s) => s.pingFps_.enabled_,
+          (s, v) => (s.pingFps_.enabled_ = v)
         );
         return;
       }

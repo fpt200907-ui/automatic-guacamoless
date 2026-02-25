@@ -23,7 +23,7 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
     {
       id: 'esp',
       title: 'ESP',
-      category: 'Render',
+      category: 'Visuals',
       description: 'Show players and grenades through walls',
       enabled: settings.esp_.enabled_,
       onToggle: () => onSettingChange((s) => (s.esp_.enabled_ = !s.esp_.enabled_)),
@@ -33,7 +33,7 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
     {
       id: 'xray',
       title: 'X-Ray',
-      category: 'Render',
+      category: 'Visuals',
       description: 'Make smokes/ceilings transparent',
       enabled: settings.xray_.enabled_,
       onToggle: () => onSettingChange((s) => (s.xray_.enabled_ = !s.xray_.enabled_)),
@@ -43,7 +43,7 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
     {
       id: 'infinitezoom',
       title: 'Infinite Zoom',
-      category: 'Visual',
+      category: 'Visuals',
       description: 'Unlimited camera zoom',
       enabled: settings.infiniteZoom_.enabled_,
       onToggle: () => onSettingChange((s) => (s.infiniteZoom_.enabled_ = !s.infiniteZoom_.enabled_)),
@@ -53,7 +53,7 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
     {
       id: 'layerspoof',
       title: 'Layer Spoofer',
-      category: 'Visual',
+      category: 'Visuals',
       description: 'Change your visible layer',
       enabled: settings.layerSpoof_.enabled_,
       onToggle: () => onSettingChange((s) => (s.layerSpoof_.enabled_ = !s.layerSpoof_.enabled_)),
@@ -63,7 +63,7 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
     {
       id: 'backgroundchange',
       title: 'Background Change',
-      category: 'Visual',
+      category: 'Visuals',
       description: 'Customize game background',
       enabled: settings.backgroundChange_.enabled_,
       onToggle: () => onSettingChange((s) => (s.backgroundChange_.enabled_ = !s.backgroundChange_.enabled_)),

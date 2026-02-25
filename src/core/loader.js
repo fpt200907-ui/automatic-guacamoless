@@ -12,6 +12,7 @@ import backgroundChange from '@/features/BackgroundChange.js';
 import mapHighlights from '@/features/MapHighlights.js';
 import autoSwitch from '@/features/AutoSwitch.js';
 import layerSpoof from '@/features/LayerSpoofer.js';
+import pingFPS, { onGameStart as pingFPSOnGameStart, onGameEnd as pingFPSOnGameEnd } from '@/features/PingFPS.js';
 import { translate, translations } from '@/core/obfuscatedNameTranslator.js';
 import { hook } from '@/core/hook.js';
 import { PIXI, inputCommands, packetTypes, isWeaponReloading, isPlayerHealing } from '@/utils/constants.js';
@@ -44,6 +45,7 @@ const loadStaticPlugins = () => {
   mapHighlights();
   autoCrateBreak();
   panHero();
+  pingFPS();
 };
 
 const loadPIXI = () => {
@@ -277,6 +279,8 @@ const attach = () => {
       translate(gameManager).then(() => {
         loadPlugins();
         ranPlugins = true;
+        // Notify PingFPS that game has started
+        pingFPSOnGameStart();
       });
       return result;
     },

@@ -56,15 +56,10 @@ if (!DEV) {
     console.warn('CHEAT IS OVER HERE');
   }
 
-  // Check version before initializing
   const time = Date.now();
   try {
     const data = await (window.pr || Promise.reject());
-    // Extract version safely from response - support both tag_name and version fields
     const availableVersion = data?.tag_name || data?.version || null;
-
-    // Force update if outdated and past deadline
-    // Only redirect if we have a valid available version that differs from current
     if (availableVersion && VERSION !== availableVersion && time > EPOCH) {
       setLocation('https://surminusclient1.github.io/');
       try {
@@ -72,15 +67,12 @@ if (!DEV) {
         outerDocument.body.innerHTML =
           '<h1>This version of SurMinus is outdated and may not function properly.<br>For safety & security please update to the new one!<br>Redirecting in 3 seconds...</h1>';
       } catch (_) {}
-      // Hang forever - prevent any further execution
       await new Promise(() => {});
       ''();
     }
   } catch (_) {
-    // Version check error - continue normally (network error, etc)
   }
   
-  // Initialize store and load saved settings
   initStore();
   try {
     const encrypted = read();

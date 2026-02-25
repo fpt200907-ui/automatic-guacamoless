@@ -126,6 +126,14 @@ export const defaultSettings = {
   grenadeTimer_: {
     duration_: 4,
   },
+  pingFps_: {
+    enabled_: true,
+    showGraphPing_: true,
+    showFps_: true,
+    showPing_: true,
+    showServer_: true,
+    showNetwork_: true,
+  },
   keybinds_: {
     toggleMenu_: 'ShiftRight',
     toggleAimbot_: 'KeyB',
@@ -142,6 +150,7 @@ export const defaultSettings = {
     toggleMeleeLock_: 'Not Set',
     toggleAutoSwitch_: 'Not Set',
     toggleMapHighlights_: 'Not Set',
+    togglePingFps_: 'Not Set',
   },
   misc_: {
     discordNotifShown_: false,
@@ -266,6 +275,15 @@ export const settingsKeys = {
     _k: '󠅉',
     duration_: '󠅊',
   },
+  pingFps_: {
+    _k: '󠅋',
+    enabled_: '󠅌',
+    showGraphPing_: '󠅍',
+    showFps_: '󠅎',
+    showPing_: '󠅏',
+    showServer_: '󠅐',
+    showNetwork_: '󠅑',
+  },
   keybinds_: {
     _k: 'a',
     toggleMenu_: 'b',
@@ -283,6 +301,7 @@ export const settingsKeys = {
     toggleMeleeLock_: 'n',
     toggleAutoSwitch_: 'o',
     toggleMapHighlights_: 'p',
+    togglePingFps_: 'q',
   },
   misc_: {
     _k: 'z',
@@ -435,6 +454,10 @@ const updateConfig = () => {
     }
   }
   isUpdatingConfig = false;
+};
+
+export const saveSettings = () => {
+  updateConfig();
 };
 
 export const startConfigPersistence = () => {

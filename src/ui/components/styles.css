@@ -514,10 +514,10 @@
 
 .feature-card-icon {
   position: absolute;
-  left: 15px;
+  left: -40px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--md-primary);
+  color: var(--md-on-surface);
   display: none;
   opacity: 0;
   transition: opacity var(--md-motion-duration-short3) var(--md-motion-easing-standard);
@@ -652,7 +652,6 @@
   width: 52rem; 
   height: 32rem;
   border-radius: var(--md-shape-corner-extra-large); 
-  backdrop-filter: blur(12px); 
   border: 1px solid var(--md-outline-variant);
   display: flex;
   flex-direction: column;
