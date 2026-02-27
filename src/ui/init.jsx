@@ -10,7 +10,7 @@ import { globalStylesheet } from '@/ui/components/styles.css';
 import { outer, outerDocument, shadowRoot, versionPromise } from '@/core/outer.js';
 import { FONT_NAME } from '@/core/hook.js';
 import { playSound, initSounds } from '@/utils/soundNotifier.js';
-import { applyM3Theme } from '@/ui/theme/m3-theme.js';import { togglePingFPS } from '@/features/PingFPS.js';
+import { applyM3Theme } from '@/ui/theme/m3-theme.js';
 export let menuElement;
 
 let reactRoot = null;
@@ -67,10 +67,6 @@ function handleSettingChange(updater) {
             
             // Play sound if state changed
             if (oldEnabled !== newEnabled) {
-              // pingFPS needs explicit init/cleanup when toggled
-              if (prefix + key === 'pingFps_') {
-                togglePingFPS(newEnabled);
-              }
               if (newEnabled === true) {
                 playSound('enable');
               } else if (newEnabled === false) {
@@ -255,13 +251,6 @@ const registerKeyboardShortcuts = (root) => {
         toggleSetting(
           (s) => s.autoSwitch_.enabled_,
           (s, v) => (s.autoSwitch_.enabled_ = v)
-        );
-        return;
-      }
-      if (event.code === settings.keybinds_.togglePingFps_) {
-        toggleSetting(
-          (s) => s.pingFps_.enabled_,
-          (s, v) => (s.pingFps_.enabled_ = v)
         );
         return;
       }

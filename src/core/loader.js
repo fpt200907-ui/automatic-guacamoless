@@ -3,6 +3,7 @@ import infiniteZoom from '@/features/InfiniteZoom.js';
 import esp from '@/features/ESP.js';
 import grenadeTimer from '@/features/GrenadeTimer.js';
 import autoFire, { autoFireEnabled, autoAttackFireEnabled } from '@/features/AutoFire.js';
+import meleeLock from '@/features/MeleeLock.js';
 import aimbot from '@/features/Aimbot.js';
 import autoHeal from '@/features/AutoHeal.js';
 import autoCrateBreak, { updateAutoCrateBreak } from '@/features/AutoCrateBreak.js';
@@ -12,7 +13,6 @@ import backgroundChange from '@/features/BackgroundChange.js';
 import mapHighlights from '@/features/MapHighlights.js';
 import autoSwitch from '@/features/AutoSwitch.js';
 import layerSpoof from '@/features/LayerSpoofer.js';
-import pingFPS, { onGameStart as pingFPSOnGameStart, onGameEnd as pingFPSOnGameEnd } from '@/features/PingFPS.js';
 import { translate, translations } from '@/core/obfuscatedNameTranslator.js';
 import { hook } from '@/core/hook.js';
 import { PIXI, inputCommands, packetTypes, isWeaponReloading, isPlayerHealing } from '@/utils/constants.js';
@@ -45,7 +45,7 @@ const loadStaticPlugins = () => {
   mapHighlights();
   autoCrateBreak();
   panHero();
-  pingFPS();
+  meleeLock();
 };
 
 const loadPIXI = () => {
@@ -279,8 +279,6 @@ const attach = () => {
       translate(gameManager).then(() => {
         loadPlugins();
         ranPlugins = true;
-        // Notify PingFPS that game has started
-        pingFPSOnGameStart();
       });
       return result;
     },

@@ -10,7 +10,7 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
   const [expandedFeature, setExpandedFeature] = useState(null);
 
   // Define which features have expandable settings
-  const featuresWithSettings = ['aimbot', 'autoheal', 'esp', 'xray', 'panhero', 'maphighlights', 'meleelock', 'pingfps'];
+  const featuresWithSettings = ['aimbot', 'autoheal', 'esp', 'xray', 'panhero', 'maphighlights', 'meleelock'];
   // Lightweight feature list used for the searchable view
   const features = [
     {
@@ -53,16 +53,6 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
       keybind: settings.keybinds_.toggleAutoCrate_,
       onKeybindChange: (newKey) => onSettingChange((s) => (s.keybinds_.toggleAutoCrate_ = newKey)),
     },
-    {
-      id: 'pingfps',
-      title: 'Ping & FPS Overlay',
-      category: 'Misc',
-      description: 'Show latency, FPS and network stats',
-      enabled: settings.pingFps_.enabled_,
-      onToggle: () => onSettingChange((s) => (s.pingFps_.enabled_ = !s.pingFps_.enabled_)),
-      keybind: settings.keybinds_.togglePingFps_,
-      onKeybindChange: (newKey) => onSettingChange((s) => (s.keybinds_.togglePingFps_ = newKey)),
-    },
   ];
 
   const normalizedQuery = (searchQuery || '').trim().toLowerCase();
@@ -98,15 +88,6 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
                 )}
                 {f.id === 'maphighlights' && (
                   <Checkbox id="smaller-trees" label="Smaller Trees" checked={settings.mapHighlights_.smallerTrees_} onChange={(v) => onSettingChange((s) => (s.mapHighlights_.smallerTrees_ = v))} />
-                )}
-                {f.id === 'pingfps' && (
-                  <>
-                    <Checkbox id="show-graph-ping" label="Show Ping Graph" checked={settings.pingFps_.showGraphPing_} onChange={(v) => onSettingChange((s) => (s.pingFps_.showGraphPing_ = v))} />
-                    <Checkbox id="show-fps" label="Show FPS" checked={settings.pingFps_.showFps_} onChange={(v) => onSettingChange((s) => (s.pingFps_.showFps_ = v))} />
-                    <Checkbox id="show-ping" label="Show Ping" checked={settings.pingFps_.showPing_} onChange={(v) => onSettingChange((s) => (s.pingFps_.showPing_ = v))} />
-                    <Checkbox id="show-server" label="Show Server" checked={settings.pingFps_.showServer_} onChange={(v) => onSettingChange((s) => (s.pingFps_.showServer_ = v))} />
-                    <Checkbox id="show-network" label="Show Network" checked={settings.pingFps_.showNetwork_} onChange={(v) => onSettingChange((s) => (s.pingFps_.showNetwork_ = v))} />
-                  </>
                 )}
               </div>
             )}

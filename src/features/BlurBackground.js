@@ -121,7 +121,7 @@ const CSS_CONTENT = `
   border-bottom-left-radius:14px;
   border-bottom-right-radius:14px;
 }
-#btn-start-team, #team-menu-options .btn-darken, #team-menu-options :nth-child(1), #btn-team-queue-mode-2 , #team-server-select , #btn-team-fill-auto , #btn-start-team, #btn-team-queue-mode-1 , #btn-team-queue-mode-2 , #team-server-select , #btn-team-fill-auto , #btn-start-team, #btn-team-fill-none , #btn-team-queue-mode-1 , #btn-team-queue-mode-2 , #team-server-select , #btn-team-fill-auto , #btn-start-team, #btn-team-leave, .name-self, .name-text {
+#btn-start-mode-0, #btn-start-team, #team-menu-options .btn-darken, #team-menu-options :nth-child(1), #btn-team-queue-mode-2 , #team-server-select , #btn-team-fill-auto , #btn-start-team, #btn-team-queue-mode-1 , #btn-team-queue-mode-2 , #team-server-select , #btn-team-fill-auto , #btn-start-team, #btn-team-fill-none , #btn-team-queue-mode-1 , #btn-team-queue-mode-2 , #team-server-select , #btn-team-fill-auto , #btn-start-team, #btn-team-leave, .name-self, .name-text {
   border-top-left-radius:14px;
   border-top-right-radius:14px;
   border-bottom-left-radius:14px;

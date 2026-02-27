@@ -91,13 +91,17 @@ const updateBodyRotation = () => {
   const body = player?.bodyContainer;
   const target = controllerState.currentPos_;
   if (!body || !target) return;
+  
+  // Validate target position has finite values
+  if (!Number.isFinite(target.x) || !Number.isFinite(target.y)) return;
+  
   const center = getScreenCenter();
   const angle = Math.atan2(target.y - center.y, target.x - center.x);
   body.rotation = angle || 0;
 };
 
 const applyAimStateSnapshot = (pos) => {
-  if (pos) {
+  if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
     controllerState.overrideActive_ = true;
     controllerState.currentPos_ = clonePoint(pos);
     aimState.lastAimPos_ = { clientX: pos.x, clientY: pos.y };
