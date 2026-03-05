@@ -90,7 +90,10 @@ function handleSettingChange(updater) {
   }
   
   renderMenu();
+  // Ensure settings are saved immediately
   saveSettings();
+  // Force another save after a short delay to ensure persistence
+  setTimeout(() => saveSettings(), 100);
 }
 
 const attachFont = async () => {
@@ -254,6 +257,13 @@ const registerKeyboardShortcuts = (root) => {
         );
         return;
       }
+      if (event.code === settings.keybinds_.toggleSpinbot_) {
+        toggleSetting(
+          (s) => s.spinbot_.enabled_,
+          (s, v) => (s.spinbot_.enabled_ = v)
+        );
+        return;
+      }
     },
   ]);
 };
@@ -267,27 +277,48 @@ const createVisibilityController = (root) => {
 
 // Color presets matching Themes.jsx
 const COLOR_PRESETS = [
-  { id: 'yellow', primary: '#ffb800', gradient: 'linear-gradient(135deg, #ffb800 0%, #ff9500 100%)', primaryContainer: 'rgba(255, 184, 0, 0.15)', stateHover: 'rgba(255, 184, 0, 0.08)', stateFocus: 'rgba(255, 184, 0, 0.12)' },
-  { id: 'mint', primary: '#6fd89f', gradient: 'linear-gradient(135deg, #6fd89f 0%, #5dd184 100%)', primaryContainer: 'rgba(111, 216, 159, 0.15)', stateHover: 'rgba(111, 216, 159, 0.08)', stateFocus: 'rgba(111, 216, 159, 0.12)' },
-  { id: 'peach', primary: '#f5c69b', gradient: 'linear-gradient(135deg, #f5c69b 0%, #f0a476 100%)', primaryContainer: 'rgba(245, 198, 155, 0.15)', stateHover: 'rgba(245, 198, 155, 0.08)', stateFocus: 'rgba(245, 198, 155, 0.12)' },
-  { id: 'lavender', primary: '#c8b5e6', gradient: 'linear-gradient(135deg, #c8b5e6 0%, #b895d4 100%)', primaryContainer: 'rgba(200, 181, 230, 0.15)', stateHover: 'rgba(200, 181, 230, 0.08)', stateFocus: 'rgba(200, 181, 230, 0.12)' },
-  { id: 'pistachio', primary: '#b5d89f', gradient: 'linear-gradient(135deg, #b5d89f 0%, #a0ce84 100%)', primaryContainer: 'rgba(181, 216, 159, 0.15)', stateHover: 'rgba(181, 216, 159, 0.08)', stateFocus: 'rgba(181, 216, 159, 0.12)' },
-  { id: 'rose', primary: '#f5bcd4', gradient: 'linear-gradient(135deg, #f5bcd4 0%, #f0a8c0 100%)', primaryContainer: 'rgba(245, 188, 212, 0.15)', stateHover: 'rgba(245, 188, 212, 0.08)', stateFocus: 'rgba(245, 188, 212, 0.12)' },
-  { id: 'blush', primary: '#f5d4e0', gradient: 'linear-gradient(135deg, #f5d4e0 0%, #f0c4d0 100%)', primaryContainer: 'rgba(245, 212, 224, 0.15)', stateHover: 'rgba(245, 212, 224, 0.08)', stateFocus: 'rgba(245, 212, 224, 0.12)' },
-  { id: 'skyblue', primary: '#b5d9f0', gradient: 'linear-gradient(135deg, #b5d9f0 0%, #80c8e8 100%)', primaryContainer: 'rgba(181, 217, 240, 0.15)', stateHover: 'rgba(181, 217, 240, 0.08)', stateFocus: 'rgba(181, 217, 240, 0.12)' },
-  { id: 'green', primary: '#6edb72', gradient: 'linear-gradient(135deg, #6edb72 0%, #41d855 100%)', primaryContainer: 'rgba(110, 219, 114, 0.15)', stateHover: 'rgba(110, 219, 114, 0.08)', stateFocus: 'rgba(110, 219, 114, 0.12)' },
-  { id: 'cyan', primary: '#00d9ff', gradient: 'linear-gradient(135deg, #00d9ff 0%, #00b8d4 100%)', primaryContainer: 'rgba(0, 217, 255, 0.15)', stateHover: 'rgba(0, 217, 255, 0.08)', stateFocus: 'rgba(0, 217, 255, 0.12)' },
-  { id: 'pink', primary: '#ff006e', gradient: 'linear-gradient(135deg, #ff006e 0%, #e60062 100%)', primaryContainer: 'rgba(255, 0, 110, 0.15)', stateHover: 'rgba(255, 0, 110, 0.08)', stateFocus: 'rgba(255, 0, 110, 0.12)' },
-  { id: 'purple', primary: '#b537f2', gradient: 'linear-gradient(135deg, #b537f2 0%, #9620d4 100%)', primaryContainer: 'rgba(181, 55, 242, 0.15)', stateHover: 'rgba(181, 55, 242, 0.08)', stateFocus: 'rgba(181, 55, 242, 0.12)' },
-  { id: 'red', primary: '#ff3333', gradient: 'linear-gradient(135deg, #ff3333 0%, #e60000 100%)', primaryContainer: 'rgba(255, 51, 51, 0.15)', stateHover: 'rgba(255, 51, 51, 0.08)', stateFocus: 'rgba(255, 51, 51, 0.12)' }
+  // New professional themes
+  { id: 'teal-moss', primary: '#5a9b9f', gradient: 'linear-gradient(180deg, #1f7f8c 0%, #4f6f52 100%)', primaryContainer: 'rgba(90, 155, 159, 0.12)', stateHover: 'rgba(90, 155, 159, 0.08)', stateFocus: 'rgba(90, 155, 159, 0.12)' },
+  { id: 'slate-blue', primary: '#6b7a8f', gradient: 'linear-gradient(180deg, #3d4a5c 0%, #5a6b7f 100%)', primaryContainer: 'rgba(107, 122, 143, 0.12)', stateHover: 'rgba(107, 122, 143, 0.08)', stateFocus: 'rgba(107, 122, 143, 0.12)' },
+  { id: 'forest-green', primary: '#5a8f6a', gradient: 'linear-gradient(180deg, #2d5a3d 0%, #6b8f6f 100%)', primaryContainer: 'rgba(90, 143, 106, 0.12)', stateHover: 'rgba(90, 143, 106, 0.08)', stateFocus: 'rgba(90, 143, 106, 0.12)' },
+  { id: 'warm-sand', primary: '#a89968', gradient: 'linear-gradient(180deg, #7a6b4a 0%, #c9b88a 100%)', primaryContainer: 'rgba(168, 153, 104, 0.12)', stateHover: 'rgba(168, 153, 104, 0.08)', stateFocus: 'rgba(168, 153, 104, 0.12)' },
+  { id: 'dusty-rose', primary: '#a77a8f', gradient: 'linear-gradient(180deg, #7a5a6f 0%, #b89db0 100%)', primaryContainer: 'rgba(167, 122, 143, 0.12)', stateHover: 'rgba(167, 122, 143, 0.08)', stateFocus: 'rgba(167, 122, 143, 0.12)' },
+  { id: 'ocean-depth', primary: '#5a7fa5', gradient: 'linear-gradient(180deg, #2d4a6b 0%, #7a9fb5 100%)', primaryContainer: 'rgba(90, 127, 165, 0.12)', stateHover: 'rgba(90, 127, 165, 0.08)', stateFocus: 'rgba(90, 127, 165, 0.12)' },
+  { id: 'copper-bronze', primary: '#8f6a5a', gradient: 'linear-gradient(180deg, #5a4a3d 0%, #a8845a 100%)', primaryContainer: 'rgba(143, 106, 90, 0.12)', stateHover: 'rgba(143, 106, 90, 0.08)', stateFocus: 'rgba(143, 106, 90, 0.12)' },
+  { id: 'lavender-mute', primary: '#8f7fa5', gradient: 'linear-gradient(180deg, #5a4a7a 0%, #a89fc9 100%)', primaryContainer: 'rgba(143, 127, 165, 0.12)', stateHover: 'rgba(143, 127, 165, 0.08)', stateFocus: 'rgba(143, 127, 165, 0.12)' },
+  { id: 'sage-green', primary: '#7a8f6a', gradient: 'linear-gradient(180deg, #4a5a3d 0%, #9aaf8f 100%)', primaryContainer: 'rgba(122, 143, 106, 0.12)', stateHover: 'rgba(122, 143, 106, 0.08)', stateFocus: 'rgba(122, 143, 106, 0.12)' },
+  // Legacy themes for backwards compatibility
+  { id: 'yellow', primary: '#ffb800', gradient: 'linear-gradient(180deg, #ffb800 0%, #ff9500 100%)', primaryContainer: 'rgba(255, 184, 0, 0.15)', stateHover: 'rgba(255, 184, 0, 0.08)', stateFocus: 'rgba(255, 184, 0, 0.12)' },
+  { id: 'mint', primary: '#6fd89f', gradient: 'linear-gradient(180deg, #6fd89f 0%, #5dd184 100%)', primaryContainer: 'rgba(111, 216, 159, 0.15)', stateHover: 'rgba(111, 216, 159, 0.08)', stateFocus: 'rgba(111, 216, 159, 0.12)' },
+  { id: 'peach', primary: '#f5c69b', gradient: 'linear-gradient(180deg, #f5c69b 0%, #f0a476 100%)', primaryContainer: 'rgba(245, 198, 155, 0.15)', stateHover: 'rgba(245, 198, 155, 0.08)', stateFocus: 'rgba(245, 198, 155, 0.12)' },
+  { id: 'lavender', primary: '#c8b5e6', gradient: 'linear-gradient(180deg, #c8b5e6 0%, #b895d4 100%)', primaryContainer: 'rgba(200, 181, 230, 0.15)', stateHover: 'rgba(200, 181, 230, 0.08)', stateFocus: 'rgba(200, 181, 230, 0.12)' },
+  { id: 'pistachio', primary: '#b5d89f', gradient: 'linear-gradient(180deg, #b5d89f 0%, #a0ce84 100%)', primaryContainer: 'rgba(181, 216, 159, 0.15)', stateHover: 'rgba(181, 216, 159, 0.08)', stateFocus: 'rgba(181, 216, 159, 0.12)' },
+  { id: 'rose', primary: '#f5bcd4', gradient: 'linear-gradient(180deg, #f5bcd4 0%, #f0a8c0 100%)', primaryContainer: 'rgba(245, 188, 212, 0.15)', stateHover: 'rgba(245, 188, 212, 0.08)', stateFocus: 'rgba(245, 188, 212, 0.12)' },
+  { id: 'blush', primary: '#f5d4e0', gradient: 'linear-gradient(180deg, #f5d4e0 0%, #f0c4d0 100%)', primaryContainer: 'rgba(245, 212, 224, 0.15)', stateHover: 'rgba(245, 212, 224, 0.08)', stateFocus: 'rgba(245, 212, 224, 0.12)' },
+  { id: 'skyblue', primary: '#b5d9f0', gradient: 'linear-gradient(180deg, #b5d9f0 0%, #80c8e8 100%)', primaryContainer: 'rgba(181, 217, 240, 0.15)', stateHover: 'rgba(181, 217, 240, 0.08)', stateFocus: 'rgba(181, 217, 240, 0.12)' },
+  { id: 'green', primary: '#6edb72', gradient: 'linear-gradient(180deg, #6edb72 0%, #41d855 100%)', primaryContainer: 'rgba(110, 219, 114, 0.15)', stateHover: 'rgba(110, 219, 114, 0.08)', stateFocus: 'rgba(110, 219, 114, 0.12)' },
+  { id: 'cyan', primary: '#00d9ff', gradient: 'linear-gradient(180deg, #00d9ff 0%, #00b8d4 100%)', primaryContainer: 'rgba(0, 217, 255, 0.15)', stateHover: 'rgba(0, 217, 255, 0.08)', stateFocus: 'rgba(0, 217, 255, 0.12)' },
+  { id: 'pink', primary: '#ff006e', gradient: 'linear-gradient(180deg, #ff006e 0%, #e60062 100%)', primaryContainer: 'rgba(255, 0, 110, 0.15)', stateHover: 'rgba(255, 0, 110, 0.08)', stateFocus: 'rgba(255, 0, 110, 0.12)' },
+  { id: 'purple', primary: '#b537f2', gradient: 'linear-gradient(180deg, #b537f2 0%, #9620d4 100%)', primaryContainer: 'rgba(181, 55, 242, 0.15)', stateHover: 'rgba(181, 55, 242, 0.08)', stateFocus: 'rgba(181, 55, 242, 0.12)' },
+  { id: 'red', primary: '#ff3333', gradient: 'linear-gradient(180deg, #ff3333 0%, #e60000 100%)', primaryContainer: 'rgba(255, 51, 51, 0.15)', stateHover: 'rgba(255, 51, 51, 0.08)', stateFocus: 'rgba(255, 51, 51, 0.12)' }
 ];
 
 // Load saved theme on page startup - apply immediately
 const loadSavedTheme = (shadowRoot) => {
-  const savedThemeId = localStorage.getItem('surminus-theme') || 'green'; // Default to green if no saved theme
+  const savedThemeId = localStorage.getItem('surminus-theme') || 'teal-moss'; // Default to teal-moss if no saved theme
   
-  const theme = COLOR_PRESETS.find(t => t.id === savedThemeId);
-  if (!theme) return;
+  let theme = COLOR_PRESETS.find(t => t.id === savedThemeId);
+  
+  // Fallback to teal-moss if theme not found
+  if (!theme) {
+    theme = COLOR_PRESETS.find(t => t.id === 'teal-moss');
+  }
+  
+  // If still no theme found, give up
+  if (!theme) {
+    console.warn(`[SurMinus] Theme "${savedThemeId}" not found in presets, using fallback`);
+    return;
+  }
   
   // Convert hex to RGB
   const hexToRgbObj = (hex) => {
@@ -299,7 +330,7 @@ const loadSavedTheme = (shadowRoot) => {
         b: parseInt(result[3], 16)
       };
     }
-    return { r: 110, g: 219, b: 114 };
+    return { r: 90, g: 155, b: 159 }; // Fallback to teal-moss
   };
   
   const { r, g, b } = hexToRgbObj(theme.primary);
@@ -315,8 +346,10 @@ const loadSavedTheme = (shadowRoot) => {
       --md-state-focus: ${theme.stateFocus} !important;
       --md-state-pressed: ${theme.stateFocus} !important;
       --md-state-dragged: rgba(${r}, ${g}, ${b}, 0.16) !important;
-      --md-scrollbar-thumb: rgba(${r}, ${g}, ${b}, 0.5) !important;
-      --md-scrollbar-thumb-hover: rgba(${r}, ${g}, ${b}, 0.8) !important;
+      --md-scrollbar-thumb: rgba(${r}, ${g}, ${b}, 0.8) !important;
+      --md-scrollbar-thumb-hover: rgba(${r}, ${g}, ${b}, 1) !important;
+      --md-primary-rgb: ${r}, ${g}, ${b} !important;
+      --md-gradient: ${theme.gradient} !important;
     }
     
     #ui {
@@ -326,18 +359,20 @@ const loadSavedTheme = (shadowRoot) => {
       --md-state-focus: ${theme.stateFocus} !important;
       --md-state-pressed: ${theme.stateFocus} !important;
       --md-state-dragged: rgba(${r}, ${g}, ${b}, 0.16) !important;
-      --md-scrollbar-thumb: rgba(${r}, ${g}, ${b}, 0.5) !important;
-      --md-scrollbar-thumb-hover: rgba(${r}, ${g}, ${b}, 0.8) !important;
+      --md-scrollbar-thumb: rgba(${r}, ${g}, ${b}, 0.8) !important;
+      --md-scrollbar-thumb-hover: rgba(${r}, ${g}, ${b}, 1) !important;
+      --md-primary-rgb: ${r}, ${g}, ${b} !important;
+      --md-gradient: ${theme.gradient} !important;
     }
     
     #ui ::-webkit-scrollbar-thumb {
-      background: rgba(${r}, ${g}, ${b}, 0.5) !important;
-    }
-    #ui ::-webkit-scrollbar-thumb:hover {
       background: rgba(${r}, ${g}, ${b}, 0.8) !important;
     }
+    #ui ::-webkit-scrollbar-thumb:hover {
+      background: rgba(${r}, ${g}, ${b}, 1) !important;
+    }
     #ui * {
-      scrollbar-color: rgba(${r}, ${g}, ${b}, 0.5) rgba(255, 255, 255, 0.03) !important;
+      scrollbar-color: rgba(${r}, ${g}, ${b}, 0.8) transparent !important;
     }
   `;
   
@@ -369,8 +404,10 @@ const loadSavedTheme = (shadowRoot) => {
           --md-state-focus: ${theme.stateFocus} !important;
           --md-state-pressed: ${theme.stateFocus} !important;
           --md-state-dragged: rgba(${r}, ${g}, ${b}, 0.16) !important;
-          --md-scrollbar-thumb: rgba(${r}, ${g}, ${b}, 0.5) !important;
-          --md-scrollbar-thumb-hover: rgba(${r}, ${g}, ${b}, 0.8) !important;
+          --md-scrollbar-thumb: rgba(${r}, ${g}, ${b}, 0.8) !important;
+          --md-scrollbar-thumb-hover: rgba(${r}, ${g}, ${b}, 1) !important;
+          --md-primary-rgb: ${r}, ${g}, ${b} !important;
+          --md-gradient: ${theme.gradient} !important;
         }
       `;
       shadowRoot.insertBefore(shadowStyleTag, shadowRoot.firstChild);
@@ -382,6 +419,7 @@ const loadSavedTheme = (shadowRoot) => {
 
 const scheduleSettingsLoad = () => {
   const parse = JSON.parse;
+  // Load settings immediately instead of waiting 1000ms to avoid race conditions
   setTimeout(() => {
     try {
       initStore();
@@ -399,7 +437,7 @@ const scheduleSettingsLoad = () => {
       renderMenu();
       renderNotification();
     }
-  }, 1000);
+  }, 100); // Reduced from 1000ms to 100ms to minimize race conditions
 };
 
 const fetchVersion = async () => {

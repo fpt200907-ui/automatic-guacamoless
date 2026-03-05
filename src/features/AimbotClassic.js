@@ -185,7 +185,7 @@ export function classicCanCastToPlayer(localPlayer, targetPlayer, weapon, bullet
 
 /**
  * Predict enemy position using ballistic equation
- * Accounts for bullet speed, enemy velocity, and ping
+ * Accounts for bullet speed, enemy velocity, acceleration, and ping
  */
 export function classicPredictPosition(enemy, currentPlayer, history) {
   if (!enemy || !currentPlayer) return null;
@@ -195,7 +195,7 @@ export function classicPredictPosition(enemy, currentPlayer, history) {
   const game = gameManager.game;
 
   // Need minimum history for accurate prediction
-  if (!history || history.length < 20) {
+  if (!history || history.length < 10) {
     const screenPos = game[translations.camera_][translations.pointToScreen_]({
       x: enemyPos.x,
       y: enemyPos.y,
@@ -203,10 +203,13 @@ export function classicPredictPosition(enemy, currentPlayer, history) {
     return screenPos;
   }
 
-  // Calculate velocity from full history range
-  const deltaTime = (history[history.length - 1][0] - history[0][0]) / 1000;
-
-  if (deltaTime <= 0) {
+  // Calculate velocity from recent history (last 5-10 frames for accuracy)
+  const recentHistoryCount = Math.min(10, Math.floor(history.length / 2));
+  const recentStart = history.length - recentHistoryCount;
+  
+  const recentTime = (history[history.length - 1][0] - history[recentStart][0]) / 1000;
+  
+  if (recentTime <= 0.001) {
     const screenPos = game[translations.camera_][translations.pointToScreen_]({
       x: enemyPos.x,
       y: enemyPos.y,
@@ -214,45 +217,80 @@ export function classicPredictPosition(enemy, currentPlayer, history) {
     return screenPos;
   }
 
-  const oldestPos = history[0][1];
+  const recentOldPos = history[recentStart][1];
   const velocity = {
-    x: (enemyPos.x - oldestPos.x) / deltaTime,
-    y: (enemyPos.y - oldestPos.y) / deltaTime,
+    x: (enemyPos.x - recentOldPos.x) / recentTime,
+    y: (enemyPos.y - recentOldPos.y) / recentTime,
   };
+
+  // Calculate acceleration for better prediction (use older history)
+  let acceleration = { x: 0, y: 0 };
+  if (history.length >= 20) {
+    const olderHistoryCount = Math.min(10, Math.floor(history.length / 3));
+    const olderStart = history.length - olderHistoryCount;
+    const olderRecentStart = Math.max(0, olderStart - 5);
+    
+    const olderTime = (history[olderStart][0] - history[olderRecentStart][0]) / 1000;
+    if (olderTime > 0.001) {
+      const olderPos = history[olderRecentStart][1];
+      const olderVelocity = {
+        x: (history[olderStart][1].x - olderPos.x) / olderTime,
+        y: (history[olderStart][1].y - olderPos.y) / olderTime,
+      };
+      
+      const accelTime = (history[history.length - 1][0] - history[olderStart][0]) / 1000;
+      if (accelTime > 0.001) {
+        acceleration = {
+          x: (velocity.x - olderVelocity.x) / accelTime,
+          y: (velocity.y - olderVelocity.y) / accelTime,
+        };
+      }
+    }
+  }
 
   // Get bullet speed for ballistic calculation
   const weapon = findWeapon(currentPlayer);
   const bullet = findBullet(weapon);
   const bulletSpeed = bullet?.speed || 1000;
 
-  // Ping compensation - add half ping to prediction
+  // Ping compensation
   const ping = (getPing?.() || 50) / 2000; // Convert to seconds
 
   const vex = velocity.x;
   const vey = velocity.y;
+  const aex = acceleration.x;
+  const aey = acceleration.y;
   const dx = enemyPos.x - currentPlayerPos.x;
   const dy = enemyPos.y - currentPlayerPos.y;
   const vb = bulletSpeed;
 
-  // Ballistic equation: (vb² - vex² - vey²)t² - 2(vex·dx + vey·dy)t - (dx² + dy²) = 0
-  const a = vb * vb - vex * vex - vey * vey;
-  const b = -2 * (vex * dx + vey * dy);
-  const c = -(dx * dx + dy * dy);
+  // Improved ballistic equation with acceleration:
+  // (vb² - (vex + aex·t)² - (vey + aey·t)²)t² - 2((vex + aex·t)·dx + (vey + aey·t)·dy)t - (dx² + dy²) = 0
+  
+  // Simplified coefficient calculation
+  const ae2 = aex * aex + aey * aey;
+  const veae = 2 * (vex * aex + vey * aey);
+  const ve2 = vex * vex + vey * vey;
+  const aead = 2 * (aex * dx + aey * dy);
+  const vead = 2 * (vex * dx + vey * dy);
+  const d2 = dx * dx + dy * dy;
+
+  // Quartic simplification (treat as quadratic for speed)
+  const a = vb * vb - ve2 - ae2 / 4;
+  const b = -vead - aead / 2;
+  const c = -d2;
 
   let t;
 
   if (Math.abs(a) < 1e-6) {
-    // Linear case (bullet speed ≈ enemy speed)
     if (Math.abs(b) < 1e-6) {
       t = 0;
     } else {
       t = -c / b;
     }
   } else {
-    // Quadratic case
     const discriminant = b * b - 4 * a * c;
     if (discriminant < 0) {
-      // No real solution - return current position
       const screenPos = game[translations.camera_][translations.pointToScreen_]({
         x: enemyPos.x,
         y: enemyPos.y,
@@ -264,10 +302,8 @@ export function classicPredictPosition(enemy, currentPlayer, history) {
     const t1 = (-b - sqrtD) / (2 * a);
     const t2 = (-b + sqrtD) / (2 * a);
 
-    // Choose smallest positive time
     t = Math.min(t1, t2) > 0 ? Math.min(t1, t2) : Math.max(t1, t2);
 
-    // Clamp to reasonable range and add ping compensation
     if (t < 0 || t > 5) {
       const screenPos = game[translations.camera_][translations.pointToScreen_]({
         x: enemyPos.x,
@@ -277,12 +313,12 @@ export function classicPredictPosition(enemy, currentPlayer, history) {
     }
   }
 
-  // Add ping compensation to prediction time
-  t += ping;
+  // Add ping compensation
+  t += ping * 0.5; // Half ping for better accuracy
 
   const predictedPos = {
-    x: enemyPos.x + vex * t,
-    y: enemyPos.y + vey * t,
+    x: enemyPos.x + vex * t + 0.5 * aex * t * t,
+    y: enemyPos.y + vey * t + 0.5 * aey * t * t,
   };
 
   return game[translations.camera_][translations.pointToScreen_](predictedPos);
@@ -375,35 +411,67 @@ export function classicFindClosestTarget(players, me) {
 }
 
 /**
- * Determine if aim should be smoothed
+ * Calculate smooth aim interpolation
+ * Returns a value between 0-1 for smooth lerping
+ * Uses classicSmooth_ setting (0-100)
+ * 0-30: Instant/Fast aiming, 30-70: Moderate smoothing, 70-100: Slow/Locked aim
+ */
+export function classicCalculateSmoothFactor(currentPos, nextPos) {
+  if (!nextPos || !currentPos) return 1.0;
+
+  const smoothSetting = settings.aimbot_.classicSmooth_ || 50;
+  const smoothIntensity = smoothSetting / 100;
+
+  const distance = Math.hypot(nextPos.x - currentPos.x, nextPos.y - currentPos.y);
+
+  // Calculate base smooth factor
+  // At 0 smooth: accept any movement (factor = 1.0, instant)
+  // At 50 smooth: moderate smoothing (factor = 0.15-0.30)
+  // At 100 smooth: very slow (factor = 0.05-0.10)
+  
+  let baseFactor;
+  if (smoothSetting < 30) {
+    // Fast aiming mode: gradually increase smoothing
+    baseFactor = 0.5 + (smoothIntensity / 0.3) * 0.5; // 0.5 to 1.0
+  } else if (smoothSetting < 70) {
+    // Moderate mode: standard smoothing
+    const normalized = (smoothSetting - 30) / 40; // 0 to 1
+    baseFactor = 0.3 - normalized * 0.15; // 0.3 to 0.15
+  } else {
+    // Slow mode: very controlled
+    const normalized = (smoothSetting - 70) / 30; // 0 to 1
+    baseFactor = 0.15 - normalized * 0.1; // 0.15 to 0.05
+  }
+
+  // Adaptive smoothing based on distance
+  // Smaller movements should be smoother
+  let adaptiveFactor = baseFactor;
+  if (distance < 5) {
+    // Very close to target, smooth more
+    adaptiveFactor = baseFactor * 0.5;
+  } else if (distance < 15) {
+    // Close to target
+    adaptiveFactor = baseFactor * 0.75;
+  } else if (distance > 50) {
+    // Far from target, move faster
+    adaptiveFactor = baseFactor * 1.3;
+  }
+
+  // Clamp factor between 0 and 1
+  return Math.max(0.02, Math.min(1.0, adaptiveFactor));
+}
+
+/**
+ * Determine if aim should be smoothed (legacy wrapper)
  * Uses classicSmooth_ setting (0-100)
  */
 export function classicShouldSmoothAim(currentPos, nextPos) {
   if (!nextPos) return false;
   if (!currentPos) return true;
 
-  // Scale thresholds based on smooth setting (0-100)
-  const smoothIntensity = (settings.aimbot_.classicSmooth_ || 50) / 100;
-  
-  // Higher smooth = tighter thresholds (slower changes)
-  const AIM_SMOOTH_DISTANCE_PX = 6 + smoothIntensity * 4; // 6-10px based on setting
-  const AIM_SMOOTH_ANGLE = Math.PI / (90 - smoothIntensity * 30); // Tighter at high smooth
-
-  const distance = Math.hypot(nextPos.x - currentPos.x, nextPos.y - currentPos.y);
-  if (distance > AIM_SMOOTH_DISTANCE_PX) return true;
-
-  const computeAimAngle = (point) => {
-    const centerX = window.innerWidth / 2;
-    const centerY = window.innerHeight / 2;
-    return Math.atan2(point.y - centerY, point.x - centerX);
-  };
-
-  const normalizeAngle = (angle) => Math.atan2(Math.sin(angle), Math.cos(angle));
-
-  const angleDiff = Math.abs(
-    normalizeAngle(computeAimAngle(nextPos) - computeAimAngle(currentPos))
-  );
-  return angleDiff > AIM_SMOOTH_ANGLE;
+  const smoothFactor = classicCalculateSmoothFactor(currentPos, nextPos);
+  // If factor is low (lots of smoothing), return true
+  return smoothFactor < 0.8;
 }
 
 export default {

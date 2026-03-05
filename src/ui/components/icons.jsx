@@ -21,6 +21,7 @@ import {
   Crosshair,
   Shield,
   MessageCircleQuestionMark,
+  RotateCw,
 } from 'lucide-preact';
 
 const Surplus = (props) => (
@@ -66,4 +67,5 @@ export const Icons = {
   Main_: Search,
   Misc_: Shield,
   HelpN_: MessageCircleQuestionMark,
+  Spinbot_: RotateCw,
 };

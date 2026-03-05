@@ -7,6 +7,7 @@ import MiscTab from '@/ui/components/tabs/Misc.jsx';
 import HelpTab from '@/ui/components/tabs/Help.jsx';
 import ThemesTab from '@/ui/components/tabs/Themes.jsx';
 import ConfigTab from '@/ui/components/tabs/Config.jsx';
+import Toast from '@/ui/components/Toast.jsx';
 import { outer, outerDocument } from '@/core/outer.js';
 import { ref_addEventListener, ref_removeEventListener } from '@/core/hook';
 
@@ -16,6 +17,7 @@ const Menu = ({ settings, onSettingChange, onClose, version }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [searchQuery, setSearchQuery] = useState('');
+  const [toast, setToast] = useState(null);
 
   const convertToSuperscript = (text) => {
     const superscriptMap = {
@@ -104,6 +106,10 @@ const Menu = ({ settings, onSettingChange, onClose, version }) => {
     e.stopPropagation();
   };
 
+  const showNotification = (message, type = 'success', duration = 3000) => {
+    setToast({ message, type, duration });
+  };
+
   const containerStyle = {
     position: 'fixed',
     zIndex: '99999',
@@ -127,7 +133,7 @@ const Menu = ({ settings, onSettingChange, onClose, version }) => {
       case 'themes':
         return <ThemesTab settings={settings} onSettingChange={onSettingChange} />;
       case 'config':
-        return <ConfigTab settings={settings} onSettingChange={onSettingChange} />;
+        return <ConfigTab settings={settings} onSettingChange={onSettingChange} onShowNotification={showNotification} />;
       case 'help':
         return <HelpTab settings={settings} onSettingChange={onSettingChange} />;
       default:
@@ -197,6 +203,14 @@ const Menu = ({ settings, onSettingChange, onClose, version }) => {
         </div>
       </div>
     </div>
+    {toast && (
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        duration={toast.duration}
+        onClose={() => setToast(null)}
+      />
+    )}
     </>
   );
 };

@@ -1,16 +1,29 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Download, Upload, Cloud, HardDrive, Settings, Sliders, Save, Trash2, Copy, Check } from 'lucide-preact';
+import { Download, Upload, Cloud, HardDrive, Settings, Sliders, Save, Trash2, Copy, Check, Edit2, X, Package } from 'lucide-preact';
 
-const Config = ({ settings, onSettingChange }) => {
+const Config = ({ settings, onSettingChange, onShowNotification }) => {
   const fileInputRef = useRef(null);
   const [activePresetTab, setActivePresetTab] = useState('cloud');
   const [localPresets, setLocalPresets] = useState([]);
   const [presetName, setPresetName] = useState('');
   const [copiedId, setCopiedId] = useState(null);
-  const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('surminus-theme') || 'yellow');
+  const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('surminus-theme') || 'teal-moss');
+  const [editingPresetId, setEditingPresetId] = useState(null);
+  const [editingPresetName, setEditingPresetName] = useState('');
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
 
-  // Theme color mapping - matches Themes.jsx
+  // Theme color mapping - matches Themes.jsx color presets
   const themeColorMap = {
+    'teal-moss': '#5a9b9f',
+    'slate-blue': '#6b7a8f',
+    'forest-green': '#5a8f6a',
+    'warm-sand': '#a89968',
+    'dusty-rose': '#a77a8f',
+    'ocean-depth': '#5a7fa5',
+    'copper-bronze': '#8f6a5a',
+    'lavender-mute': '#8f7fa5',
+    'sage-green': '#7a8f6a',
+    // Legacy colors (for backwards compatibility)
     yellow: '#ffb800',
     mint: '#6fd89f',
     peach: '#f5c69b',
@@ -63,6 +76,16 @@ const Config = ({ settings, onSettingChange }) => {
     };
   }, [currentTheme]);
 
+  // Clear pending delete after 5 seconds
+  useEffect(() => {
+    if (pendingDeleteId) {
+      const timeout = setTimeout(() => {
+        setPendingDeleteId(null);
+      }, 5000);
+      return () => clearTimeout(timeout);
+    }
+  }, [pendingDeleteId]);
+
   // Save local presets to localStorage
   const savePresetsToStorage = (presets) => {
     try {
@@ -76,7 +99,11 @@ const Config = ({ settings, onSettingChange }) => {
   // Save current settings as a new local preset
   const saveCurrentAsPreset = () => {
     if (!presetName.trim()) {
-      alert('❌ Please enter a preset name');
+      if (onShowNotification) {
+        onShowNotification('Please enter a preset name', 'error', 3000);
+      } else {
+        alert('❌ Please enter a preset name');
+      }
       return;
     }
 
@@ -90,7 +117,11 @@ const Config = ({ settings, onSettingChange }) => {
     const updated = [...localPresets, newPreset];
     savePresetsToStorage(updated);
     setPresetName('');
-    alert('✅ Preset saved!');
+    if (onShowNotification) {
+      onShowNotification('Preset saved!', 'success', 3000);
+    } else {
+      alert('✅ Preset saved!');
+    }
   };
 
   // Load and apply a local preset
@@ -98,21 +129,77 @@ const Config = ({ settings, onSettingChange }) => {
     onSettingChange(() => {
       Object.assign(settings, preset.settings);
     });
-    alert(`✅ Preset "${preset.name}" applied!`);
+    if (onShowNotification) {
+      onShowNotification(`Preset "${preset.name}" applied!`, 'success', 3000);
+    } else {
+      alert(`✅ Preset "${preset.name}" applied!`);
+    }
   };
 
   // Delete a local preset
   const deleteLocalPreset = (id) => {
-    if (!window.confirm('Are you sure you want to delete this preset?')) {
+    // Two-step delete: first click marks for deletion, second confirms
+    if (pendingDeleteId === id) {
+      // Confirmed deletion
+      const updated = localPresets.filter(p => p.id !== id);
+      savePresetsToStorage(updated);
+      setLocalPresets(updated);
+      setPendingDeleteId(null);
+      
+      if (onShowNotification) {
+        onShowNotification('Preset deleted!', 'success', 3000);
+      } else {
+        alert('✅ Preset deleted!');
+      }
+    } else {
+      // Mark for deletion - show warning
+      setPendingDeleteId(id);
+      if (onShowNotification) {
+        onShowNotification('Click again to confirm deletion', 'info', 3000);
+      }
+    }
+  };
+
+  // Start editing a preset name
+  const startEditingPresetName = (preset) => {
+    setEditingPresetId(preset.id);
+    setEditingPresetName(preset.name);
+  };
+
+  // Cancel editing
+  const cancelEditingPresetName = () => {
+    setEditingPresetId(null);
+    setEditingPresetName('');
+  };
+
+  // Save renamed preset
+  const saveRenamedPreset = (presetId) => {
+    if (!editingPresetName.trim()) {
+      if (onShowNotification) {
+        onShowNotification('Preset name cannot be empty', 'error', 3000);
+      } else {
+        alert('❌ Preset name cannot be empty');
+      }
       return;
     }
 
-    setLocalPresets(prevPresets => {
-      const updated = prevPresets.filter(p => p.id !== id);
-      savePresetsToStorage(updated);
-      alert('✅ Preset deleted!');
-      return updated;
-    });
+    const updated = localPresets.map(p => 
+      p.id === presetId ? { ...p, name: editingPresetName } : p
+    );
+    
+    // Save to storage first
+    savePresetsToStorage(updated);
+    
+    // Then update state
+    setLocalPresets(updated);
+    setEditingPresetId(null);
+    setEditingPresetName('');
+    
+    if (onShowNotification) {
+      onShowNotification(`Preset renamed to "${editingPresetName}"!`, 'success', 3000);
+    } else {
+      alert(`✅ Preset renamed to "${editingPresetName}"!`);
+    }
   };
 
   // Export a cloud preset
@@ -172,13 +259,39 @@ const Config = ({ settings, onSettingChange }) => {
     reader.onload = (e) => {
       try {
         const importedSettings = JSON.parse(e.target?.result);
-        // Apply imported settings
+        
+        // Extract preset name from filename (without extension)
+        const fileName = file.name.replace('.json', '').replace('surminus-preset-', '').replace('surminus-settings-', '');
+        const presetName = fileName || `Imported-${Date.now()}`;
+        
+        // Create new preset from imported settings
+        const newPreset = {
+          id: Date.now(),
+          name: presetName,
+          settings: importedSettings,
+          createdAt: new Date().toISOString(),
+        };
+        
+        // Save to local presets
+        const updated = [...localPresets, newPreset];
+        savePresetsToStorage(updated);
+        
+        // Also apply the imported settings
         onSettingChange(() => {
           Object.assign(settings, importedSettings);
         });
-        alert('✅ Settings imported successfully!');
+        
+        if (onShowNotification) {
+          onShowNotification(`Imported "${presetName}" to Local Presets!`, 'success', 3000);
+        } else {
+          alert(`✅ Imported "${presetName}" to Local Presets!`);
+        }
       } catch (error) {
-        alert('❌ Failed to import settings: Invalid JSON file');
+        if (onShowNotification) {
+          onShowNotification('Failed to import settings: Invalid JSON file', 'error', 3000);
+        } else {
+          alert('❌ Failed to import settings: Invalid JSON file');
+        }
         console.error('Import error:', error);
       }
     };
@@ -199,7 +312,11 @@ const Config = ({ settings, onSettingChange }) => {
       s.esp_.enabled_ = false;
       s.blurBackground_.enabled_ = true; // Enable subtle blur for privacy without being too obvious
     });
-    alert('✅ Legit preset applied!');
+    if (onShowNotification) {
+      onShowNotification('Legit preset applied!', 'success', 3000);
+    } else {
+      alert('✅ Legit preset applied!');
+    }
   };
 
   const applyNoCheatPreset = () => {
@@ -222,7 +339,11 @@ const Config = ({ settings, onSettingChange }) => {
       s.panHero_.enabled_ = false;
       s.layerSpoof_.enabled_ = false;
     });
-    alert('✅ No Cheat preset applied!');
+    if (onShowNotification) {
+      onShowNotification('No Cheat preset applied!', 'success', 3000);
+    } else {
+      alert('✅ No Cheat preset applied!');
+    }
   };
 
   const applyBlatantPreset = () => {
@@ -246,7 +367,11 @@ const Config = ({ settings, onSettingChange }) => {
       s.panHero_.enabled_ = false; // Explicitly disable
       s.layerSpoof_.enabled_ = true;
     });
-    alert('✅ Blatant preset applied!');
+    if (onShowNotification) {
+      onShowNotification('Blatant preset applied!', 'success', 3000);
+    } else {
+      alert('✅ Blatant preset applied!');
+    }
   };
 
   const formatDate = (isoString) => {
@@ -260,7 +385,7 @@ const Config = ({ settings, onSettingChange }) => {
   };
 
   // Get current theme color
-  const getThemeColor = () => themeColorMap[currentTheme] || '#ffb800';
+  const getThemeColor = () => themeColorMap[currentTheme] || '#5a9b9f'; // Fallback to teal-moss
 
   // Helper to darken/lighten colors
   const adjustColor = (hex, percent) => {
@@ -275,7 +400,99 @@ const Config = ({ settings, onSettingChange }) => {
       .toString(16).slice(1);
   };
 
+  // Helper to convert hex to rgba
+  const hexToRgba = (hex, alpha) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
+
   const themeColor = getThemeColor();
+
+  // Handler functions for Save button with theme-aware shadows
+  const handleSaveButtonMouseEnter = (e) => {
+    e.currentTarget.style.transform = 'scale(1.08)';
+    e.currentTarget.style.boxShadow = `0 6px 16px ${hexToRgba(themeColor, 0.35)}`;
+  };
+
+  const handleSaveButtonMouseLeave = (e) => {
+    e.currentTarget.style.transform = 'scale(1)';
+    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
+  };
+
+  const handleSaveButtonMouseDown = (e) => {
+    e.currentTarget.style.transform = 'scale(0.96)';
+  };
+
+  const handleSaveButtonMouseUp = (e) => {
+    e.currentTarget.style.transform = 'scale(1.08)';
+  };
+
+  // Handler functions for preset tabs with theme-aware hover
+  const handleTabMouseEnter = (e) => {
+    e.currentTarget.style.background = hexToRgba(themeColor, 0.08);
+    e.currentTarget.style.color = 'var(--md-on-surface)';
+  };
+
+  const handleTabMouseLeave = (e) => {
+    if (e.currentTarget.classList.contains('preset-tab-active')) {
+      e.currentTarget.style.color = themeColor;
+    } else {
+      e.currentTarget.style.background = 'none';
+      e.currentTarget.style.color = 'var(--md-on-surface-variant)';
+    }
+  };
+
+  // Handler functions for empty placeholder
+  const handlePlaceholderMouseEnter = (e) => {
+    e.currentTarget.style.background = hexToRgba(themeColor, 0.06);
+    e.currentTarget.style.borderColor = hexToRgba(themeColor, 0.3);
+    const packageIcon = e.currentTarget.querySelector('div:first-child');
+    if (packageIcon) {
+      packageIcon.style.opacity = '0.8';
+      packageIcon.style.color = themeColor;
+    }
+    const titleDiv = e.currentTarget.querySelector('div:nth-child(2)');
+    if (titleDiv) {
+      titleDiv.style.color = themeColor;
+    }
+  };
+
+  const handlePlaceholderMouseLeave = (e) => {
+    e.currentTarget.style.background = 'transparent';
+    e.currentTarget.style.borderColor = 'transparent';
+    const packageIcon = e.currentTarget.querySelector('div:first-child');
+    if (packageIcon) {
+      packageIcon.style.opacity = '0.5';
+      packageIcon.style.color = 'var(--md-on-surface)';
+    }
+    const titleDiv = e.currentTarget.querySelector('div:nth-child(2)');
+    if (titleDiv) {
+      titleDiv.style.color = 'var(--md-on-surface)';
+    }
+  };
+
+  // Handler functions for import/export buttons
+  const handleConfigButtonMouseEnter = (e) => {
+    e.currentTarget.style.background = themeColor;
+    e.currentTarget.style.color = '#ffffff';
+    e.currentTarget.style.boxShadow = `0 8px 16px ${hexToRgba(themeColor, 0.3)}`;
+    const icon = e.currentTarget.querySelector('svg');
+    if (icon) {
+      icon.style.color = '#ffffff';
+    }
+  };
+
+  const handleConfigButtonMouseLeave = (e) => {
+    e.currentTarget.style.background = `var(--md-primary-container)`;
+    e.currentTarget.style.color = themeColor;
+    e.currentTarget.style.boxShadow = 'none';
+    const icon = e.currentTarget.querySelector('svg');
+    if (icon) {
+      icon.style.color = themeColor;
+    }
+  };
 
   return (
     <div className="section">
@@ -291,6 +508,12 @@ const Config = ({ settings, onSettingChange }) => {
           <button
             className={`preset-tab ${activePresetTab === 'cloud' ? 'preset-tab-active' : ''}`}
             onClick={() => setActivePresetTab('cloud')}
+            onMouseEnter={handleTabMouseEnter}
+            onMouseLeave={handleTabMouseLeave}
+            style={{
+              color: activePresetTab === 'cloud' ? themeColor : 'var(--md-on-surface-variant)',
+              borderBottomColor: activePresetTab === 'cloud' ? themeColor : 'transparent'
+            }}
           >
             <Cloud size={18} />
             Cloud Presets
@@ -298,6 +521,12 @@ const Config = ({ settings, onSettingChange }) => {
           <button
             className={`preset-tab ${activePresetTab === 'local' ? 'preset-tab-active' : ''}`}
             onClick={() => setActivePresetTab('local')}
+            onMouseEnter={handleTabMouseEnter}
+            onMouseLeave={handleTabMouseLeave}
+            style={{
+              color: activePresetTab === 'local' ? themeColor : 'var(--md-on-surface-variant)',
+              borderBottomColor: activePresetTab === 'local' ? themeColor : 'transparent'
+            }}
           >
             <HardDrive size={18} />
             Local Presets
@@ -338,11 +567,28 @@ const Config = ({ settings, onSettingChange }) => {
                       padding: 'var(--md-spacing-3)',
                       border: `1px solid ${themeColor}`,
                       borderRadius: 'var(--md-shape-corner-small)',
-                      background: `rgba(255, 184, 0, 0.1)`,
+                      background: hexToRgba(themeColor, 0.1),
                       color: themeColor,
                       fontWeight: 600,
                       cursor: 'pointer',
-                      transition: 'all var(--md-motion-duration-short2) var(--md-motion-easing-standard)',
+                      transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                      transform: 'scale(1)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.06)';
+                      e.currentTarget.style.background = hexToRgba(themeColor, 0.25);
+                      e.currentTarget.style.boxShadow = `0 4px 12px ${themeColor}40`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.background = hexToRgba(themeColor, 0.1);
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                    onMouseDown={(e) => {
+                      e.currentTarget.style.transform = 'scale(0.97)';
+                    }}
+                    onMouseUp={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.06)';
                     }}
                   >
                     Apply
@@ -365,11 +611,28 @@ const Config = ({ settings, onSettingChange }) => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      transition: 'all var(--md-motion-duration-short2) var(--md-motion-easing-standard)',
+                      transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                      transform: 'scale(1)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.08)';
+                      e.currentTarget.style.background = 'var(--md-surface-container-high)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.background = 'var(--md-surface-container)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                    onMouseDown={(e) => {
+                      e.currentTarget.style.transform = 'scale(0.96)';
+                    }}
+                    onMouseUp={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.08)';
                     }}
                     title="Export preset"
                   >
-                    <Download size={16} />
+                    <Download size={16} style={{ transition: 'transform 200ms cubic-bezier(0.4, 0, 0.2, 1)' }} />
                   </button>
                 </div>
               </div>
@@ -397,11 +660,28 @@ const Config = ({ settings, onSettingChange }) => {
                       padding: 'var(--md-spacing-3)',
                       border: `1px solid ${themeColor}`,
                       borderRadius: 'var(--md-shape-corner-small)',
-                      background: `rgba(255, 184, 0, 0.1)`,
+                      background: hexToRgba(themeColor, 0.1),
                       color: themeColor,
                       fontWeight: 600,
                       cursor: 'pointer',
-                      transition: 'all var(--md-motion-duration-short2) var(--md-motion-easing-standard)',
+                      transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                      transform: 'scale(1)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.06)';
+                      e.currentTarget.style.background = hexToRgba(themeColor, 0.25);
+                      e.currentTarget.style.boxShadow = `0 4px 12px ${themeColor}40`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.background = hexToRgba(themeColor, 0.1);
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                    onMouseDown={(e) => {
+                      e.currentTarget.style.transform = 'scale(0.97)';
+                    }}
+                    onMouseUp={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.06)';
                     }}
                   >
                     Apply
@@ -435,11 +715,28 @@ const Config = ({ settings, onSettingChange }) => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      transition: 'all var(--md-motion-duration-short2) var(--md-motion-easing-standard)',
+                      transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                      transform: 'scale(1)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.08)';
+                      e.currentTarget.style.background = 'var(--md-surface-container-high)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.background = 'var(--md-surface-container)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                    onMouseDown={(e) => {
+                      e.currentTarget.style.transform = 'scale(0.96)';
+                    }}
+                    onMouseUp={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.08)';
                     }}
                     title="Export preset"
                   >
-                    <Download size={16} />
+                    <Download size={16} style={{ transition: 'transform 200ms cubic-bezier(0.4, 0, 0.2, 1)' }} />
                   </button>
                 </div>
               </div>
@@ -467,11 +764,28 @@ const Config = ({ settings, onSettingChange }) => {
                       padding: 'var(--md-spacing-3)',
                       border: `1px solid ${themeColor}`,
                       borderRadius: 'var(--md-shape-corner-small)',
-                      background: `rgba(255, 184, 0, 0.1)`,
+                      background: hexToRgba(themeColor, 0.1),
                       color: themeColor,
                       fontWeight: 600,
                       cursor: 'pointer',
-                      transition: 'all var(--md-motion-duration-short2) var(--md-motion-easing-standard)',
+                      transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                      transform: 'scale(1)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.06)';
+                      e.currentTarget.style.background = hexToRgba(themeColor, 0.25);
+                      e.currentTarget.style.boxShadow = `0 4px 12px ${themeColor}40`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.background = hexToRgba(themeColor, 0.1);
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                    onMouseDown={(e) => {
+                      e.currentTarget.style.transform = 'scale(0.97)';
+                    }}
+                    onMouseUp={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.06)';
                     }}
                   >
                     Apply
@@ -505,11 +819,28 @@ const Config = ({ settings, onSettingChange }) => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      transition: 'all var(--md-motion-duration-short2) var(--md-motion-easing-standard)',
+                      transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                      transform: 'scale(1)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.08)';
+                      e.currentTarget.style.background = 'var(--md-surface-container-high)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.background = 'var(--md-surface-container)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                    onMouseDown={(e) => {
+                      e.currentTarget.style.transform = 'scale(0.96)';
+                    }}
+                    onMouseUp={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.08)';
                     }}
                     title="Export preset"
                   >
-                    <Download size={16} />
+                    <Download size={16} style={{ transition: 'transform 200ms cubic-bezier(0.4, 0, 0.2, 1)' }} />
                   </button>
                 </div>
               </div>
@@ -553,14 +884,23 @@ const Config = ({ settings, onSettingChange }) => {
                   padding: 'var(--md-spacing-3) var(--md-spacing-4)',
                   border: 'none',
                   borderRadius: 'var(--md-shape-corner-small)',
-                  background: 'var(--md-primary)',
+                  background: themeColor,
                   color: 'var(--md-on-primary)',
                   fontWeight: 600,
                   cursor: 'pointer',
-                  transition: 'all var(--md-motion-duration-short2) var(--md-motion-easing-standard)',
+                  transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  transform: 'scale(1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
                 }}
+                onMouseEnter={handleSaveButtonMouseEnter}
+                onMouseLeave={handleSaveButtonMouseLeave}
+                onMouseDown={handleSaveButtonMouseDown}
+                onMouseUp={handleSaveButtonMouseUp}
               >
-                <Save size={18} />
+                <Save size={18} style={{ transition: 'transform 250ms cubic-bezier(0.4, 0, 0.2, 1)' }} />
               </button>
             </div>
 
@@ -570,15 +910,69 @@ const Config = ({ settings, onSettingChange }) => {
                 {console.log('[Render] LocalPresets count:', localPresets.length) || localPresets.map((preset) => (
                   <div key={preset.id} className="preset-card">
                     <div className="preset-card-header">
-                      <div className="preset-card-title">{preset.name}</div>
+                      {editingPresetId === preset.id ? (
+                        <input
+                          type="text"
+                          value={editingPresetName}
+                          onChange={(e) => setEditingPresetName(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') saveRenamedPreset(preset.id);
+                            if (e.key === 'Escape') cancelEditingPresetName();
+                          }}
+                          autoFocus
+                          style={{
+                            flex: 1,
+                            padding: '0.375rem 0.5rem',
+                            border: '1px solid var(--md-primary)',
+                            borderRadius: 'var(--md-shape-corner-small)',
+                            background: 'var(--md-surface-container)',
+                            color: 'var(--md-on-surface)',
+                            fontSize: 'var(--md-font-label-large)',
+                            fontWeight: 600,
+                            fontFamily: 'inherit',
+                          }}
+                        />
+                      ) : (
+                        <div className="preset-card-title">{preset.name}</div>
+                      )}
                       <div className="preset-card-actions">
-                        <button
-                          className="preset-card-action-btn"
-                          onClick={() => copyToClipboard(preset.name, preset.id)}
-                          title="Copy name"
-                        >
-                          {copiedId === preset.id ? <Check size={16} /> : <Copy size={16} />}
-                        </button>
+                        {editingPresetId === preset.id ? (
+                          <>
+                            <button
+                              className="preset-card-action-btn"
+                              onClick={() => saveRenamedPreset(preset.id)}
+                              title="Confirm rename"
+                              style={{ color: '#4caf50' }}
+                            >
+                              <Check size={16} />
+                            </button>
+                            <button
+                              className="preset-card-action-btn"
+                              onClick={cancelEditingPresetName}
+                              title="Cancel"
+                              style={{ color: '#f44336' }}
+                            >
+                              <X size={16} />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              className="preset-card-action-btn"
+                              onClick={() => startEditingPresetName(preset)}
+                              title="Rename"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button
+                              className="preset-card-action-btn"
+                              onClick={() => copyToClipboard(preset.name, preset.id)}
+                              title="Copy name"
+                            >
+                              {copiedId === preset.id ? <Check size={16} /> : <Copy size={16} />}
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                     <div className="preset-card-time">
@@ -597,11 +991,28 @@ const Config = ({ settings, onSettingChange }) => {
                           padding: 'var(--md-spacing-3)',
                           border: '1px solid var(--md-primary)',
                           borderRadius: 'var(--md-shape-corner-small)',
-                          background: 'rgba(255, 184, 0, 0.1)',
+                          background: hexToRgba(themeColor, 0.1),
                           color: 'var(--md-primary)',
                           fontWeight: 600,
                           cursor: 'pointer',
-                          transition: 'all var(--md-motion-duration-short2) var(--md-motion-easing-standard)',
+                          transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                          transform: 'scale(1)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.06)';
+                          e.currentTarget.style.background = hexToRgba(themeColor, 0.25);
+                          e.currentTarget.style.boxShadow = `0 4px 12px ${themeColor}40`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.background = hexToRgba(themeColor, 0.1);
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                        onMouseDown={(e) => {
+                          e.currentTarget.style.transform = 'scale(0.97)';
+                        }}
+                        onMouseUp={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.06)';
                         }}
                       >
                         Apply
@@ -620,11 +1031,28 @@ const Config = ({ settings, onSettingChange }) => {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          transition: 'all var(--md-motion-duration-short2) var(--md-motion-easing-standard)',
+                          transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                          transform: 'scale(1)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.08)';
+                          e.currentTarget.style.background = 'var(--md-surface-container-high)';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.background = 'var(--md-surface-container)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                        onMouseDown={(e) => {
+                          e.currentTarget.style.transform = 'scale(0.96)';
+                        }}
+                        onMouseUp={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.08)';
                         }}
                         title="Export preset"
                       >
-                        <Download size={16} />
+                        <Download size={16} style={{ transition: 'transform 200ms cubic-bezier(0.4, 0, 0.2, 1)' }} />
                       </button>
 
                       {/* Delete Button */}
@@ -633,58 +1061,80 @@ const Config = ({ settings, onSettingChange }) => {
                         onClick={() => deleteLocalPreset(preset.id)}
                         style={{
                           padding: 'var(--md-spacing-3)',
-                          border: '2px solid #ff3333',
+                          border: `2px solid ${pendingDeleteId === preset.id ? '#ff6666' : '#ff3333'}`,
                           borderRadius: 'var(--md-shape-corner-small)',
-                          background: 'rgba(255, 51, 51, 0.15)',
+                          background: pendingDeleteId === preset.id ? 'rgba(255, 51, 51, 0.35)' : 'rgba(255, 51, 51, 0.15)',
                           color: '#ff3333',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          transition: 'all 0.2s ease',
+                          transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
                           zIndex: 10,
                           pointerEvents: 'auto',
                           fontSize: '14px',
-                          fontWeight: 500,
+                          fontWeight: pendingDeleteId === preset.id ? 700 : 500,
+                          boxShadow: pendingDeleteId === preset.id ? '0 4px 16px rgba(255, 51, 51, 0.4)' : 'none',
+                          transform: pendingDeleteId === preset.id ? 'scale(1.05)' : 'scale(1)',
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'rgba(255, 51, 51, 0.25)';
-                          e.currentTarget.style.boxShadow = '0 0 12px rgba(255, 51, 51, 0.4)';
-                          e.currentTarget.style.transform = 'scale(1.08)';
+                          if (pendingDeleteId !== preset.id) {
+                            e.currentTarget.style.background = 'rgba(255, 51, 51, 0.25)';
+                            e.currentTarget.style.boxShadow = '0 4px 16px rgba(255, 51, 51, 0.4)';
+                            e.currentTarget.style.transform = 'scale(1.08)';
+                          }
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'rgba(255, 51, 51, 0.15)';
-                          e.currentTarget.style.boxShadow = 'none';
-                          e.currentTarget.style.transform = 'scale(1)';
+                          if (pendingDeleteId !== preset.id) {
+                            e.currentTarget.style.background = 'rgba(255, 51, 51, 0.15)';
+                            e.currentTarget.style.boxShadow = 'none';
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }
                         }}
                         onMouseDown={(e) => {
-                          e.currentTarget.style.transform = 'scale(0.95)';
+                          if (pendingDeleteId !== preset.id) {
+                            e.currentTarget.style.transform = 'scale(0.95)';
+                          }
                         }}
                         onMouseUp={(e) => {
-                          e.currentTarget.style.transform = 'scale(1.08)';
+                          if (pendingDeleteId !== preset.id) {
+                            e.currentTarget.style.transform = 'scale(1.08)';
+                          }
                         }}
-                        title="Delete this preset permanently"
+                        title={pendingDeleteId === preset.id ? 'Click again to confirm deletion' : 'Delete this preset permanently'}
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={18} style={{ transition: 'transform 200ms cubic-bezier(0.4, 0, 0.2, 1)' }} />
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="preset-placeholder">
+              <div 
+                className="preset-placeholder"
+                onMouseEnter={handlePlaceholderMouseEnter}
+                onMouseLeave={handlePlaceholderMouseLeave}
+                style={{
+                  transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  borderRadius: 'var(--md-shape-corner-medium)',
+                  border: '1px solid transparent',
+                  padding: 'var(--md-spacing-6)',
+                }}
+              >
                 <div style={{
-                  fontSize: '2.5rem',
                   marginBottom: 'var(--md-spacing-3)',
                   opacity: 0.5,
+                  transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  color: 'var(--md-on-surface)',
                 }}>
-                  📦
+                  <Package size={48} />
                 </div>
                 <div style={{
                   fontSize: 'var(--md-font-title-medium)',
                   fontWeight: 600,
                   color: 'var(--md-on-surface)',
                   marginBottom: 'var(--md-spacing-1)',
+                  transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
                 }}>
                   No presets saved yet
                 </div>
@@ -709,8 +1159,15 @@ const Config = ({ settings, onSettingChange }) => {
           <button
             className="config-button config-button-primary"
             onClick={handleExportSettings}
+            onMouseEnter={handleConfigButtonMouseEnter}
+            onMouseLeave={handleConfigButtonMouseLeave}
+            style={{
+              background: `var(--md-primary-container)`,
+              color: themeColor,
+              transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
           >
-            <Download size={18} />
+            <Download size={18} style={{ color: 'inherit', transition: 'color 250ms cubic-bezier(0.4, 0, 0.2, 1)' }} />
             Export Settings
           </button>
           <p className="config-button-description">
@@ -722,8 +1179,15 @@ const Config = ({ settings, onSettingChange }) => {
           <button
             className="config-button config-button-primary"
             onClick={() => fileInputRef.current?.click()}
+            onMouseEnter={handleConfigButtonMouseEnter}
+            onMouseLeave={handleConfigButtonMouseLeave}
+            style={{
+              background: `var(--md-primary-container)`,
+              color: themeColor,
+              transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
           >
-            <Upload size={18} />
+            <Upload size={18} style={{ color: 'inherit', transition: 'color 250ms cubic-bezier(0.4, 0, 0.2, 1)' }} />
             Import Settings
           </button>
           <input
@@ -734,7 +1198,7 @@ const Config = ({ settings, onSettingChange }) => {
             style={{ display: 'none' }}
           />
           <p className="config-button-description">
-            Load settings from a JSON file you previously exported
+            Load settings from a JSON file and save as Local Preset
           </p>
         </div>
       </div>

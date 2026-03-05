@@ -82,7 +82,9 @@ const ESP_LINE_WIDTH = 2.5;
 let currentTarget = null;
 let isAutoAttacking = false;
 let lastMeleeSwitchTime = -Infinity;
+let lastCrateScanTime = -Infinity;
 const MELEE_SWITCH_DELAY = 50;
+const CRATE_SCAN_INTERVAL = 200; // Scan for crates every 200ms instead of every 16ms
 
 /**
  * Check if an object is a breakable crate/container
@@ -230,6 +232,7 @@ function isPlayerHealing(player) {
 
 /**
  * Main update function - detect crate proximity and attack
+ * Only scans for crates every CRATE_SCAN_INTERVAL to reduce CPU usage
  */
 export function updateAutoCrateBreak(player) {
   if (!settings.autoCrateBreak_?.enabled_) {
@@ -253,8 +256,25 @@ export function updateAutoCrateBreak(player) {
     return null;
   }
 
-  // Find closest crate
-  const crateInfo = findClosestCrate(player);
+  // Only scan for crates every 200ms to reduce performance impact
+  const now = performance.now();
+  let crateInfo = null;
+  if (now - lastCrateScanTime > CRATE_SCAN_INTERVAL) {
+    crateInfo = findClosestCrate(player);
+    lastCrateScanTime = now;
+  }
+  
+  // If we haven't scanned recently, keep using current target if it's still close
+  if (!crateInfo && currentTarget) {
+    const cratePos = currentTarget[translations.visualPos_] || currentTarget.pos;
+    const playerPos = player[translations.visualPos_];
+    if (cratePos && playerPos) {
+      const distance = Math.hypot(playerPos.x - cratePos.x, playerPos.y - cratePos.y);
+      if (distance <= PROXIMITY_THRESHOLD) {
+        crateInfo = { obj: currentTarget, distance };
+      }
+    }
+  }
   
   if (!crateInfo) {
     currentTarget = null;
@@ -388,5 +408,10 @@ export default function autoCrateBreak() {
   
   Reflect.apply(ref_addEventListener, outer, ['mouseup', handleMouseUp]);
   
-  setInterval(autoCrateAttackTicker, 16);
+  const attackTickerInterval = setInterval(autoCrateAttackTicker, 16);
+
+  // Return cleanup function for proper unload
+  return () => {
+    clearInterval(attackTickerInterval);
+  };
 }

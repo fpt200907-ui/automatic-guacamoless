@@ -2,7 +2,7 @@ import React from 'react';
 import KeybindSlot from '@/ui/components/interaction/KeybindSlot.jsx';
 import { Icons } from '@/ui/components/icons.jsx';
 
-const FeatureCard = ({ title, category, description, enabled, onToggle, keybind, onKeybindChange, featureId, className = '' }) => {
+const FeatureCard = ({ title, category, description, enabled, onToggle, keybind, onKeybindChange, featureId, hint, className = '' }) => {
   // Map feature IDs to icon keys
   const iconMap = {
     'aimbot': 'Aimbot_',
@@ -33,11 +33,14 @@ const FeatureCard = ({ title, category, description, enabled, onToggle, keybind,
         <div className="feature-card-title">
           <div className="feature-title-text">{title}</div>
           {keybind && (
-            <KeybindSlot
-              keybind={keybind}
-              editable={true}
-              onClick={(newKey) => onKeybindChange && onKeybindChange(newKey)}
-            />
+            <div className="keybind-with-hint">
+              <KeybindSlot
+                keybind={keybind}
+                editable={true}
+                onClick={(newKey) => onKeybindChange && onKeybindChange(newKey)}
+              />
+              {hint && <span className="keybind-hint">{hint}</span>}
+            </div>
           )}
           <div className="feature-category">{category}</div>
         </div>

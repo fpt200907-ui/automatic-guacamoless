@@ -17,7 +17,7 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
   }, []);
 
   // Define which features have expandable settings
-  const featuresWithSettings = ['aimbot', 'autoheal', 'esp', 'xray', 'panhero', 'maphighlights', 'meleelock', 'backgroundchange'];
+  const featuresWithSettings = ['aimbot', 'autoheal', 'esp', 'xray', 'panhero', 'maphighlights', 'meleelock', 'backgroundchange', 'spinbot'];
   // Lightweight feature list used for the searchable view
   const features = [
     {
@@ -49,6 +49,7 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
       onToggle: () => onSettingChange((s) => (s.infiniteZoom_.enabled_ = !s.infiniteZoom_.enabled_)),
       keybind: settings.keybinds_.toggleInfiniteZoom_,
       onKeybindChange: (newKey) => onSettingChange((s) => (s.keybinds_.toggleInfiniteZoom_ = newKey)),
+      hint: '+ Scroll',
     },
     {
       id: 'layerspoof',
@@ -68,6 +69,16 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
       enabled: settings.backgroundChange_.enabled_,
       onToggle: () => onSettingChange((s) => (s.backgroundChange_.enabled_ = !s.backgroundChange_.enabled_)),
     },
+    {
+      id: 'spinbot',
+      title: 'Spinbot',
+      category: 'Visuals',
+      description: 'Automatically spin to confuse enemies',
+      enabled: settings.spinbot_.enabled_,
+      onToggle: () => onSettingChange((s) => (s.spinbot_.enabled_ = !s.spinbot_.enabled_)),
+      keybind: settings.keybinds_.toggleSpinbot_,
+      onKeybindChange: (newKey) => onSettingChange((s) => (s.keybinds_.toggleSpinbot_ = newKey)),
+    },
   ];
 
   const normalizedQuery = (searchQuery || '').trim().toLowerCase();
@@ -81,7 +92,7 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
         {filtered.map((f) => (
           <div key={f.id} className="feature-card-wrapper">
             <div className="feature-card-header" onClick={() => featuresWithSettings.includes(f.id) && setExpandedFeature(expandedFeature === f.id ? null : f.id)}>
-              <FeatureCard title={f.title} category={f.category} description={f.description} enabled={f.enabled} onToggle={f.onToggle} keybind={f.keybind} onKeybindChange={f.onKeybindChange} featureId={f.id} />
+              <FeatureCard title={f.title} category={f.category} description={f.description} enabled={f.enabled} onToggle={f.onToggle} keybind={f.keybind} onKeybindChange={f.onKeybindChange} featureId={f.id} hint={f.hint} />
               {featuresWithSettings.includes(f.id) && (
                 <div className={`chevron ${expandedFeature === f.id ? 'expanded' : ''}`}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -109,6 +120,51 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
                     <Checkbox id="darker-smokes" label="Darker Smokes" checked={settings.xray_.darkerSmokes_} onChange={(v) => onSettingChange((s) => (s.xray_.darkerSmokes_ = v))} />
                     <Slider id="tree-opacity" label="Tree Opacity" value={settings.xray_.treeOpacity_} onChange={(v) => onSettingChange((s) => (s.xray_.treeOpacity_ = v))} />
                     <Checkbox id="remove-ceilings" label="Remove Ceilings" checked={settings.xray_.removeCeilings_} onChange={(v) => onSettingChange((s) => (s.xray_.removeCeilings_ = v))} />
+                  </>
+                )}
+                {f.id === 'spinbot' && (
+                  <>
+                    <Slider id="spinbot-speed" label="Spin Speed" value={settings.spinbot_.speed_} onChange={(v) => onSettingChange((s) => (s.spinbot_.speed_ = v))} min="10" max="360" step="10" />
+                    <Checkbox id="spinbot-realistic" label="Realistic Spin" checked={settings.spinbot_.realistic_} onChange={(v) => onSettingChange((s) => {
+                      if (v) {
+                        s.spinbot_.realistic_ = true;
+                        s.spinbot_.spinTwoDirections_ = false;
+                        s.spinbot_.spinThreeDirections_ = false;
+                        s.spinbot_.spinAllDirections_ = false;
+                      } else {
+                        s.spinbot_.realistic_ = false;
+                      }
+                    })} />
+                    <Checkbox id="spinbot-two-directions" label="Spin 2 Directions" checked={settings.spinbot_.spinTwoDirections_} onChange={(v) => onSettingChange((s) => {
+                      if (v) {
+                        s.spinbot_.realistic_ = false;
+                        s.spinbot_.spinTwoDirections_ = true;
+                        s.spinbot_.spinThreeDirections_ = false;
+                        s.spinbot_.spinAllDirections_ = false;
+                      } else {
+                        s.spinbot_.spinTwoDirections_ = false;
+                      }
+                    })} />
+                    <Checkbox id="spinbot-three-directions" label="Spin 3 Directions" checked={settings.spinbot_.spinThreeDirections_} onChange={(v) => onSettingChange((s) => {
+                      if (v) {
+                        s.spinbot_.realistic_ = false;
+                        s.spinbot_.spinThreeDirections_ = true;
+                        s.spinbot_.spinTwoDirections_ = false;
+                        s.spinbot_.spinAllDirections_ = false;
+                      } else {
+                        s.spinbot_.spinThreeDirections_ = false;
+                      }
+                    })} />
+                    <Checkbox id="spinbot-all-directions" label="Spin 4 Directions" checked={settings.spinbot_.spinAllDirections_} onChange={(v) => onSettingChange((s) => {
+                      if (v) {
+                        s.spinbot_.realistic_ = false;
+                        s.spinbot_.spinAllDirections_ = true;
+                        s.spinbot_.spinTwoDirections_ = false;
+                        s.spinbot_.spinThreeDirections_ = false;
+                      } else {
+                         s.spinbot_.spinAllDirections_ = false;
+                      }
+                    })} />
                   </>
                 )}
                 {f.id === 'backgroundchange' && (

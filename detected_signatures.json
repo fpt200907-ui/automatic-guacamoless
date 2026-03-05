@@ -1,0 +1,213 @@
+{
+  "timestamp": "2026-03-01T05:22:42.589Z",
+  "gameProperties": {
+    "touch": "Touch",
+    "camera": "Camera",
+    "renderer": "Renderer",
+    "particleBarn": "ParticleBarn",
+    "decalBarn": "DecalBarn",
+    "map": "Map",
+    "playerBarn": "PlayerBarn",
+    "bulletBarn": "BulletBarn",
+    "flareBarn": "FlareBarn",
+    "projectileBarn": "ProjectileBarn",
+    "explosionBarn": "ExplosionBarn",
+    "planeBarn": "PlaneBarn",
+    "airdropBarn": "AirdropBarn",
+    "smokeBarn": "SmokeBarn",
+    "deadBodyBarn": "DeadBodyBarn",
+    "lootBarn": "LootBarn",
+    "gas": "Gas",
+    "uiManager": "UiManager",
+    "ui2Manager": "UiManager2",
+    "emoteBarn": "EmoteBarn",
+    "shotBarn": "ShotBarn",
+    "objectCreator": "Creator",
+    "debugDisplay": "PIXI",
+    "canvasMode": "boolean",
+    "updatePass": "boolean",
+    "updatePassDelay": "number",
+    "disconnectMsg": "string",
+    "playing": "boolean",
+    "gameOver": "boolean",
+    "spectating": "boolean",
+    "inputMsgTimeout": "number",
+    "prevInputMsg": "net",
+    "playingTicker": "number",
+    "updateRecvCount": "number",
+    "localId": "number",
+    "activeId": "number",
+    "activePlayer": "Player",
+    "validateAlpha": "boolean",
+    "targetZoom": "number",
+    "debugZoom": "number",
+    "useDebugZoom": "boolean"
+  },
+  "translationMap": {
+    "touch_": {
+      "type": "Touch",
+      "description": "Property: m_touch"
+    },
+    "camera_": {
+      "type": "Camera",
+      "description": "Property: m_camera"
+    },
+    "renderer_": {
+      "type": "Renderer",
+      "description": "Property: m_renderer"
+    },
+    "particleBarn_": {
+      "type": "ParticleBarn",
+      "description": "Property: m_particleBarn"
+    },
+    "decalBarn_": {
+      "type": "DecalBarn",
+      "description": "Property: m_decalBarn"
+    },
+    "map_": {
+      "type": "Map",
+      "description": "Property: m_map"
+    },
+    "playerBarn_": {
+      "type": "PlayerBarn",
+      "description": "Property: m_playerBarn"
+    },
+    "bulletBarn_": {
+      "type": "BulletBarn",
+      "description": "Property: m_bulletBarn"
+    },
+    "flareBarn_": {
+      "type": "FlareBarn",
+      "description": "Property: m_flareBarn"
+    },
+    "projectileBarn_": {
+      "type": "ProjectileBarn",
+      "description": "Property: m_projectileBarn"
+    },
+    "explosionBarn_": {
+      "type": "ExplosionBarn",
+      "description": "Property: m_explosionBarn"
+    },
+    "planeBarn_": {
+      "type": "PlaneBarn",
+      "description": "Property: m_planeBarn"
+    },
+    "airdropBarn_": {
+      "type": "AirdropBarn",
+      "description": "Property: m_airdropBarn"
+    },
+    "smokeBarn_": {
+      "type": "SmokeBarn",
+      "description": "Property: m_smokeBarn"
+    },
+    "deadBodyBarn_": {
+      "type": "DeadBodyBarn",
+      "description": "Property: m_deadBodyBarn"
+    },
+    "lootBarn_": {
+      "type": "LootBarn",
+      "description": "Property: m_lootBarn"
+    },
+    "gas_": {
+      "type": "Gas",
+      "description": "Property: m_gas"
+    },
+    "uiManager_": {
+      "type": "UiManager",
+      "description": "Property: m_uiManager"
+    },
+    "ui2Manager_": {
+      "type": "UiManager2",
+      "description": "Property: m_ui2Manager"
+    },
+    "emoteBarn_": {
+      "type": "EmoteBarn",
+      "description": "Property: m_emoteBarn"
+    },
+    "shotBarn_": {
+      "type": "ShotBarn",
+      "description": "Property: m_shotBarn"
+    },
+    "objectCreator_": {
+      "type": "Creator",
+      "description": "Property: m_objectCreator"
+    },
+    "debugDisplay_": {
+      "type": "PIXI",
+      "description": "Property: m_debugDisplay"
+    },
+    "canvasMode_": {
+      "type": "boolean",
+      "description": "Property: m_canvasMode"
+    },
+    "updatePass_": {
+      "type": "boolean",
+      "description": "Property: m_updatePass"
+    },
+    "updatePassDelay_": {
+      "type": "number",
+      "description": "Property: m_updatePassDelay"
+    },
+    "disconnectMsg_": {
+      "type": "string",
+      "description": "Property: m_disconnectMsg"
+    },
+    "playing_": {
+      "type": "boolean",
+      "description": "Property: m_playing"
+    },
+    "gameOver_": {
+      "type": "boolean",
+      "description": "Property: m_gameOver"
+    },
+    "spectating_": {
+      "type": "boolean",
+      "description": "Property: m_spectating"
+    },
+    "inputMsgTimeout_": {
+      "type": "number",
+      "description": "Property: m_inputMsgTimeout"
+    },
+    "prevInputMsg_": {
+      "type": "net",
+      "description": "Property: m_prevInputMsg"
+    },
+    "playingTicker_": {
+      "type": "number",
+      "description": "Property: m_playingTicker"
+    },
+    "updateRecvCount_": {
+      "type": "number",
+      "description": "Property: m_updateRecvCount"
+    },
+    "localId_": {
+      "type": "number",
+      "description": "Property: m_localId"
+    },
+    "activeId_": {
+      "type": "number",
+      "description": "Property: m_activeId"
+    },
+    "activePlayer_": {
+      "type": "Player",
+      "description": "Property: m_activePlayer"
+    },
+    "validateAlpha_": {
+      "type": "boolean",
+      "description": "Property: m_validateAlpha"
+    },
+    "targetZoom_": {
+      "type": "number",
+      "description": "Property: m_targetZoom"
+    },
+    "debugZoom_": {
+      "type": "number",
+      "description": "Property: m_debugZoom"
+    },
+    "useDebugZoom_": {
+      "type": "boolean",
+      "description": "Property: m_useDebugZoom"
+    }
+  },
+  "note": "These are the ACTUAL property names from TypeScript source. Obfuscated names will be different when compiled."
+}

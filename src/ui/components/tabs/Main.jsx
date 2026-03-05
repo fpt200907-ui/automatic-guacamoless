@@ -108,6 +108,7 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
       onToggle: () => onSettingChange((s) => (s.infiniteZoom_.enabled_ = !s.infiniteZoom_.enabled_)),
       keybind: settings.keybinds_.toggleInfiniteZoom_,
       onKeybindChange: (newKey) => onSettingChange((s) => (s.keybinds_.toggleInfiniteZoom_ = newKey)),
+      hint: '+ Scroll',
     },
     {
       id: 'maphighlights',
@@ -194,7 +195,7 @@ const Main = ({ settings, onSettingChange, searchQuery = '' }) => {
         {filtered.map((f) => (
           <div key={f.id} className="feature-card-wrapper">
             <div className="feature-card-header" onClick={() => featuresWithSettings.includes(f.id) && setExpandedFeature(expandedFeature === f.id ? null : f.id)}>
-              <FeatureCard title={f.title} category={f.category} description={f.description} enabled={f.enabled} onToggle={f.onToggle} keybind={f.keybind} onKeybindChange={f.onKeybindChange} featureId={f.id} />
+              <FeatureCard title={f.title} category={f.category} description={f.description} enabled={f.enabled} onToggle={f.onToggle} keybind={f.keybind} onKeybindChange={f.onKeybindChange} featureId={f.id} hint={f.hint} />
               {featuresWithSettings.includes(f.id) && (
                 <div className={`chevron ${expandedFeature === f.id ? 'expanded' : ''}`}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

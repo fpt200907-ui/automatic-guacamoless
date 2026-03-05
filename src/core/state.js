@@ -142,6 +142,15 @@ export const defaultSettings = {
     toggleMeleeLock_: 'Not Set',
     toggleAutoSwitch_: 'Not Set',
     toggleMapHighlights_: 'Not Set',
+    toggleSpinbot_: 'KeyO',
+  },
+  spinbot_: {
+    enabled_: false,
+    speed_: 180,
+    realistic_: true,
+    spinAllDirections_: false,
+    spinThreeDirections_: false,
+    spinTwoDirections_: false,
   },
   misc_: {
     discordNotifShown_: false,
@@ -283,6 +292,16 @@ export const settingsKeys = {
     toggleMeleeLock_: 'n',
     toggleAutoSwitch_: 'o',
     toggleMapHighlights_: 'p',
+    toggleSpinbot_: 'q',
+  },
+  spinbot_: {
+    _k: '󠄎󠄐',
+    enabled_: '󠄃󠄍',
+    speed_: '󠄃󠄎',
+    realistic_: '󠄃󠄏',
+    spinThreeDirections_: '󠄃󠄒',
+    spinAllDirections_: '󠄃󠄑',
+    spinTwoDirections_: '󠄃󠄓',
   },
   misc_: {
     _k: 'z',

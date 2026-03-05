@@ -13,6 +13,7 @@ import backgroundChange from '@/features/BackgroundChange.js';
 import mapHighlights from '@/features/MapHighlights.js';
 import autoSwitch from '@/features/AutoSwitch.js';
 import layerSpoof from '@/features/LayerSpoofer.js';
+import spinbot from '@/features/Spinbot.js';
 import { translate, translations } from '@/core/obfuscatedNameTranslator.js';
 import { hook } from '@/core/hook.js';
 import { PIXI, inputCommands, packetTypes, isWeaponReloading, isPlayerHealing } from '@/utils/constants.js';
@@ -64,6 +65,7 @@ const loadPlugins = () => {
     aimbot();
     autoSwitch();
     layerSpoof();
+    spinbot();
     ranPlugins = true;
   }
   xray();

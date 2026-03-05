@@ -324,6 +324,8 @@ iframe[src*="adservice"] {
 export default function () {
   // Keep the style in sync with the user's setting.
   let applied = false;
+  let styleCheckInterval = null;
+  let extrasStateCheckInterval = null;
 
   const applyStyle = () => {
     try {
@@ -350,7 +352,16 @@ export default function () {
 
   // Apply immediately and then poll occasionally so toggling in UI works.
   applyStyle();
-  const interval = setInterval(applyStyle, 500);
+  styleCheckInterval = setInterval(applyStyle, 500);
+
+  // Cleanup function to prevent memory leaks when unloading
+  const cleanup = () => {
+    clearInterval(styleCheckInterval);
+    clearInterval(extrasStateCheckInterval);
+    if (extrasInitialized) {
+      cleanupExtras();
+    }
+  };
 
   // Extras: FPS, Ping, Health, Armor highlights and optional FPS cap.
   let extrasInitialized = false;
@@ -361,6 +372,7 @@ export default function () {
   let killSound = null;
   let armorObservers = [];
   let weaponObservers = [];
+  let lastExtrasState = null;
 
   const getKills = () => {
     try {
@@ -386,6 +398,10 @@ export default function () {
 
   const setupWeaponBorderHandler = () => {
     try {
+      // Cleanup old observers first
+      weaponObservers.forEach((mo) => mo.disconnect());
+      weaponObservers.length = 0;
+      
       if (!outerDocument) return;
       const weaponContainers = Array.from(outerDocument.getElementsByClassName("ui-weapon-switch"));
       weaponContainers.forEach((container) => {
@@ -509,6 +525,13 @@ export default function () {
         if (healthContainer) {
           let lastHP = 0;
           
+          // Cache DOM elements to avoid repeated queries
+          const healthActualEl = outerDocument.getElementById('ui-health-actual');
+          const boostCounter0El = outerDocument.getElementById('ui-boost-counter-0');
+          const boostCounter1El = outerDocument.getElementById('ui-boost-counter-1');
+          const boostCounter2El = outerDocument.getElementById('ui-boost-counter-2');
+          const boostCounter3El = outerDocument.getElementById('ui-boost-counter-3');
+          
           healthEl = outerDocument.createElement('span');
           healthEl.style.cssText = 'display:block;position:fixed;z-index: 2;margin:6px 0 0 0;right: 15px;mix-blend-mode: difference;font-weight: bold;font-size:large;';
           healthContainer.appendChild(healthEl);
@@ -519,19 +542,24 @@ export default function () {
 
           healthInterval = setInterval(() => {
             try {
-              const hpPercent = outerDocument.getElementById('ui-health-actual').style.width.slice(0, -1);
+              // Use cached elements instead of querying repeatedly
+              if (!healthActualEl || !boostCounter0El) return;
+              
+              const hpPercent = healthActualEl.style.width.slice(0, -1);
               if (hpPercent !== lastHP) {
                 lastHP = hpPercent;
                 healthEl.innerHTML = Number.parseFloat(hpPercent).toFixed(1);
               }
               
-              const boost0Width = parseFloat(outerDocument.getElementById('ui-boost-counter-0').querySelector('.ui-bar-inner').style.width.slice(0, -1)) / 100;
-              const boost1Width = parseFloat(outerDocument.getElementById('ui-boost-counter-1').querySelector('.ui-bar-inner').style.width.slice(0, -1)) / 100;
-              const boost2Width = parseFloat(outerDocument.getElementById('ui-boost-counter-2').querySelector('.ui-bar-inner').style.width.slice(0, -1)) / 100;
-              const boost3Width = parseFloat(outerDocument.getElementById('ui-boost-counter-3').querySelector('.ui-bar-inner').style.width.slice(0, -1)) / 100;
-              
-              const adrTotal = 25 * boost0Width + 25 * boost1Width + 37.5 * boost2Width + 12.5 * boost3Width;
-              adrEl.innerHTML = Math.round(adrTotal);
+              try {
+                const boost0Width = parseFloat(boostCounter0El.querySelector('.ui-bar-inner').style.width.slice(0, -1)) / 100;
+                const boost1Width = parseFloat(boostCounter1El.querySelector('.ui-bar-inner').style.width.slice(0, -1)) / 100;
+                const boost2Width = parseFloat(boostCounter2El.querySelector('.ui-bar-inner').style.width.slice(0, -1)) / 100;
+                const boost3Width = parseFloat(boostCounter3El.querySelector('.ui-bar-inner').style.width.slice(0, -1)) / 100;
+                
+                const adrTotal = 25 * boost0Width + 25 * boost1Width + 37.5 * boost2Width + 12.5 * boost3Width;
+                adrEl.innerHTML = Math.round(adrTotal);
+              } catch { }
               
               // Detect kill count increase and trigger sound (no visual display)
               const currentKills = getKills();
@@ -613,19 +641,25 @@ export default function () {
   };
 
   const applyExtras = () => {
-    if (settings.blurBackground_ && settings.blurBackground_.enabled_) {
+    const isEnabled = settings.blurBackground_ && settings.blurBackground_.enabled_;
+    
+    // Only update if state changed
+    if (isEnabled === lastExtrasState) return;
+    lastExtrasState = isEnabled;
+    
+    if (isEnabled) {
       initExtras();
-      startPingTest();
     } else {
       cleanupExtras();
     }
   };
 
   applyExtras();
-  const extrasInterval = setInterval(() => {
+  // Only check for state changes every 2 seconds, not constantly
+  extrasStateCheckInterval = setInterval(() => {
     applyExtras();
-    startPingTest();
-  }, 1000);
+  }, 2000);
 
-  // We intentionally do not clear the intervals; they're lightweight and ensure toggles are applied.
+  // Return cleanup function for proper unload
+  return cleanup;
 }
